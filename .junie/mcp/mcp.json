@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "C:\\Program Files\\PHP-8.5.2-nts-Win32-vs17-x64\\php.exe",
+            "args": [
+                "D:\\WEB-DEV\\mediahub\\mediahub\\artisan",
+                "boost:mcp"
+            ]
+        }
+    }
+}
