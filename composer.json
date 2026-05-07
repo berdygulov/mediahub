@@ -1,11 +1,13 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/react-starter-kit",
+    "name": "mediahub/mediahub",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "A media file upload, management and viewing platform.",
     "keywords": [
-        "laravel",
-        "framework"
+        "media",
+        "upload",
+        "video",
+        "image"
     ],
     "license": "MIT",
     "require": {

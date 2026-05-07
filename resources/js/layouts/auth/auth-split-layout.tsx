@@ -21,6 +21,12 @@ export default function AuthSplitLayout({
                     <AppLogoIcon className="mr-2 size-8 fill-current text-white" />
                     {name}
                 </Link>
+                <div className="relative z-20 mt-auto">
+                    <p className="text-lg font-medium">Your media, organised.</p>
+                    <p className="mt-1 text-sm text-zinc-400">
+                        Upload, manage, and share your videos, images, and documents in one place.
+                    </p>
+                </div>
             </div>
             <div className="w-full lg:p-8">
                 <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
