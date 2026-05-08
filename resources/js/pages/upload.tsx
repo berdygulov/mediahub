@@ -1,43 +1,225 @@
-import { Head, Link } from '@inertiajs/react';
-import { Upload, Film, Music, CloudUpload } from 'lucide-react';
-import * as uploadRoute from '@/routes/upload';
+import { useRef, useState } from 'react';
+import { Head } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
+import { useDropzone, type FileRejection } from 'react-dropzone';
+import { AlertCircle, CheckCircle2, Clock, CloudUpload, Film, Music } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
+import * as uploadRoute from '@/routes/upload';
+import { toast } from 'sonner';
+
+const MAX_SIZE_BYTES = 500 * 1024 * 1024;
+
+const ACCEPTED_TYPES = {
+    'video/mp4': ['.mp4'],
+    'video/x-matroska': ['.mkv'],
+    'video/x-msvideo': ['.avi'],
+    'audio/mpeg': ['.mp3'],
+    'audio/wav': ['.wav'],
+    'audio/x-wav': ['.wav'],
+    'audio/flac': ['.flac'],
+    'audio/x-flac': ['.flac'],
+};
+
+type FileStatus = 'pending' | 'uploading' | 'done' | 'error';
+
+interface QueueItem {
+    id: string;
+    file: File;
+    name: string;
+    size: number;
+    mediaType: 'video' | 'audio';
+    status: FileStatus;
+    progress: number;
+    error?: string;
+}
+
+function formatBytes(bytes: number): string {
+    if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+    if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${bytes} B`;
+}
 
 export default function UploadPage() {
+    const [queue, setQueueState] = useState<QueueItem[]>([]);
+    const queueRef = useRef<QueueItem[]>([]);
+    const uploadingRef = useRef<string | null>(null);
+    const startNextRef = useRef<() => void>(() => {});
+
+    const setQueue = (items: QueueItem[]) => {
+        queueRef.current = items;
+        setQueueState([...items]);
+    };
+
+    const startNext = () => {
+        if (uploadingRef.current) return;
+
+        const next = queueRef.current.find((q) => q.status === 'pending');
+        if (!next) return;
+
+        uploadingRef.current = next.id;
+        setQueue(queueRef.current.map((q) => (q.id === next.id ? { ...q, status: 'uploading' as const } : q)));
+
+        router.post(uploadRoute.store.url(), { file: next.file }, {
+            forceFormData: true,
+            preserveState: true,
+            preserveScroll: true,
+            onProgress: (p) => {
+                if (!p) return;
+                setQueue(queueRef.current.map((q) => (q.id === next.id ? { ...q, progress: p.percentage ?? 0 } : q)));
+            },
+            onSuccess: () => {
+                uploadingRef.current = null;
+                toast.success(`${next.name} uploaded`);
+                setQueue(queueRef.current.map((q) => (q.id === next.id ? { ...q, status: 'done' as const, progress: 100 } : q)));
+                startNextRef.current();
+            },
+            onError: (errors) => {
+                uploadingRef.current = null;
+                const msg = (Object.values(errors)[0] as string) ?? 'Upload failed';
+                toast.error(`${next.name}: ${msg}`);
+                setQueue(queueRef.current.map((q) => (q.id === next.id ? { ...q, status: 'error' as const, error: msg } : q)));
+                startNextRef.current();
+            },
+        });
+    };
+
+    startNextRef.current = startNext;
+
+    const onDrop = (accepted: File[], rejected: FileRejection[]) => {
+        rejected.forEach(({ file, errors }) => {
+            const msg =
+                errors[0]?.code === 'file-too-large' ? `${file.name} exceeds 500 MB` : `${file.name}: unsupported format`;
+            toast.error(msg);
+        });
+
+        if (!accepted.length) return;
+
+        const newItems: QueueItem[] = accepted.map((file) => ({
+            id: crypto.randomUUID(),
+            file,
+            name: file.name,
+            size: file.size,
+            mediaType: file.type.startsWith('video/') ? 'video' : 'audio',
+            status: 'pending' as const,
+            progress: 0,
+        }));
+
+        setQueue([...queueRef.current, ...newItems]);
+        startNext();
+    };
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: ACCEPTED_TYPES,
+        maxSize: MAX_SIZE_BYTES,
+        multiple: true,
+    });
+
+    const completedCount = queue.filter((q) => q.status === 'done' || q.status === 'error').length;
+
     return (
         <>
             <Head title="Upload" />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 lg:p-6">
-
-                {/* Drop zone — TODO: wire up real upload with progress */}
-                <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-sidebar-border/70 p-10 text-center transition-colors hover:border-primary/40 dark:border-sidebar-border">
-                    <div className="flex size-16 items-center justify-center rounded-full bg-muted">
-                        <CloudUpload className="size-8 text-muted-foreground" />
+                {/* Drop zone */}
+                <div
+                    {...getRootProps()}
+                    className={cn(
+                        'flex flex-1 cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed p-10 text-center transition-colors',
+                        isDragActive
+                            ? 'border-primary bg-primary/5'
+                            : 'border-sidebar-border/70 hover:border-primary/40 dark:border-sidebar-border',
+                    )}
+                >
+                    <input {...getInputProps()} />
+                    <div
+                        className={cn(
+                            'flex size-16 items-center justify-center rounded-full transition-colors',
+                            isDragActive ? 'bg-primary/10' : 'bg-muted',
+                        )}
+                    >
+                        <CloudUpload
+                            className={cn('size-8 transition-colors', isDragActive ? 'text-primary' : 'text-muted-foreground')}
+                        />
                     </div>
                     <div className="flex flex-col gap-1">
-                        <p className="text-sm font-medium">Drag and drop files here</p>
-                        <p className="text-xs text-muted-foreground">
-                            Supported formats: MP4, MKV, AVI, MP3, WAV, FLAC
-                        </p>
+                        <p className="text-sm font-medium">{isDragActive ? 'Drop files here' : 'Drag and drop files here'}</p>
+                        <p className="text-xs text-muted-foreground">or click to browse · MP4, MKV, AVI, MP3, WAV, FLAC · max 500 MB</p>
                     </div>
-                    <label className="cursor-pointer rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                        <Upload className="mr-1.5 inline-block size-3.5" />
-                        Browse files
-                        {/* TODO: bind to hidden file input */}
-                        <input type="file" className="sr-only" accept=".mp4,.mkv,.avi,.mp3,.wav,.flac" multiple />
-                    </label>
                 </div>
+
+                {/* Queue */}
+                {queue.length > 0 && (
+                    <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-sm font-medium">Queue ({queue.length})</h2>
+                            {completedCount > 0 && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setQueue(queueRef.current.filter((q) => q.status !== 'done' && q.status !== 'error'))}
+                                >
+                                    Clear completed ({completedCount})
+                                </Button>
+                            )}
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            {queue.map((item) => (
+                                <div
+                                    key={item.id}
+                                    className="flex flex-col gap-2 rounded-lg border border-sidebar-border/70 p-3 dark:border-sidebar-border"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted">
+                                            {item.mediaType === 'video' ? (
+                                                <Film className="size-4 text-muted-foreground" />
+                                            ) : (
+                                                <Music className="size-4 text-muted-foreground" />
+                                            )}
+                                        </div>
+                                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                            <p className="truncate text-sm font-medium">{item.name}</p>
+                                            <p className="text-xs text-muted-foreground">{formatBytes(item.size)}</p>
+                                        </div>
+                                        <div className="flex shrink-0 items-center gap-2">
+                                            {item.status === 'done' && <CheckCircle2 className="size-4 text-green-500" />}
+                                            {item.status === 'error' && <AlertCircle className="size-4 text-destructive" />}
+                                            {item.status === 'pending' && <Clock className="size-4 text-muted-foreground" />}
+                                            {item.status === 'uploading' && (
+                                                <span className="tabular-nums text-xs text-muted-foreground">{item.progress}%</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {item.status === 'uploading' && <Progress value={item.progress} className="h-1.5" />}
+                                    {item.status === 'error' && item.error && (
+                                        <p className="text-xs text-destructive">{item.error}</p>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Supported types legend */}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     {(['MP4', 'MKV', 'AVI'] as const).map((ext) => (
-                        <div key={ext} className="flex items-center gap-2 rounded-lg border border-sidebar-border/70 p-3 dark:border-sidebar-border">
+                        <div
+                            key={ext}
+                            className="flex items-center gap-2 rounded-lg border border-sidebar-border/70 p-3 dark:border-sidebar-border"
+                        >
                             <Film className="size-4 shrink-0 text-muted-foreground" />
                             <span className="text-xs font-medium">{ext}</span>
                         </div>
                     ))}
                     {(['MP3', 'WAV', 'FLAC'] as const).map((ext) => (
-                        <div key={ext} className="flex items-center gap-2 rounded-lg border border-sidebar-border/70 p-3 dark:border-sidebar-border">
+                        <div
+                            key={ext}
+                            className="flex items-center gap-2 rounded-lg border border-sidebar-border/70 p-3 dark:border-sidebar-border"
+                        >
                             <Music className="size-4 shrink-0 text-muted-foreground" />
                             <span className="text-xs font-medium">{ext}</span>
                         </div>

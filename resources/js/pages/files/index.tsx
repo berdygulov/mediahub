@@ -1,76 +1,528 @@
-import { Head, Link } from '@inertiajs/react';
-import { Film, Music, Upload, SlidersHorizontal } from 'lucide-react';
-import { dashboard } from '@/routes';
-import * as files from '@/routes/files';
-import * as upload from '@/routes/upload';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import {
+    type ColumnDef,
+    flexRender,
+    getCoreRowModel,
+    useReactTable,
+} from '@tanstack/react-table';
+import { format, parseISO } from 'date-fns';
+import {
+    ArrowDown,
+    ArrowUp,
+    ArrowUpDown,
+    Download,
+    Eye,
+    Film,
+    Music,
+    Trash2,
+    Upload,
+} from 'lucide-react';
+import * as React from 'react';
+import type { DateRange } from 'react-day-picker';
 
-interface Props {
-    type?: 'video' | 'audio';
-    sort?: string;
-    order?: string;
+import { Button } from '@/components/ui/button';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { dashboard } from '@/routes';
+import * as filesRoute from '@/routes/files';
+import * as uploadRoute from '@/routes/upload';
+
+interface FileFolder {
+    id: number;
+    name: string;
 }
 
-export default function FilesIndex({ type, sort, order }: Props) {
+interface FileOwner {
+    id: number;
+    name: string;
+}
+
+interface FileRecord {
+    id: number;
+    name: string;
+    mime_type: string;
+    type: 'video' | 'audio';
+    size: number;
+    folder: FileFolder | null;
+    user: FileOwner;
+    created_at: string;
+}
+
+interface PaginationLink {
+    url: string | null;
+    label: string;
+    active: boolean;
+}
+
+interface PaginatedFiles {
+    data: FileRecord[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+    links: PaginationLink[];
+}
+
+interface Filters {
+    search: string;
+    type: string;
+    from: string;
+    to: string;
+    sort: string;
+    order: string;
+}
+
+interface Props {
+    files: PaginatedFiles;
+    filters: Filters;
+}
+
+function formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
+}
+
+function decodePaginationLabel(label: string): string {
+    return label.replace('&laquo;', '«').replace('&raquo;', '»');
+}
+
+function SortIcon({ column, sort, order }: { column: string; sort: string; order: string }) {
+    if (sort !== column) return <ArrowUpDown className="ml-1 inline size-3 opacity-40" />;
+    return order === 'asc' ? (
+        <ArrowUp className="ml-1 inline size-3" />
+    ) : (
+        <ArrowDown className="ml-1 inline size-3" />
+    );
+}
+
+export default function FilesIndex({ files, filters }: Props) {
+    const { auth } = usePage().props;
+    const isAdmin = auth.user.is_admin;
+
+    const [search, setSearch] = React.useState(filters.search);
+    const [typeFilter, setTypeFilter] = React.useState(filters.type || 'all');
+    const [dateRange, setDateRange] = React.useState<DateRange | undefined>(
+        filters.from
+            ? {
+                  from: new Date(filters.from),
+                  to: filters.to ? new Date(filters.to) : undefined,
+              }
+            : undefined,
+    );
+    const [fileToDelete, setFileToDelete] = React.useState<FileRecord | null>(null);
+    const [isDeleting, setIsDeleting] = React.useState(false);
+
+    const searchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Читаем актуальные значения фильтров через ref, чтобы navigate всегда видел свежие данные
+    const searchRef = React.useRef(search);
+    const typeFilterRef = React.useRef(typeFilter);
+    const dateRangeRef = React.useRef(dateRange);
+    searchRef.current = search;
+    typeFilterRef.current = typeFilter;
+    dateRangeRef.current = dateRange;
+
+    function navigate(overrides: Record<string, string | undefined> = {}) {
+        const range = dateRangeRef.current;
+        const params: Record<string, string | undefined> = {
+            search: searchRef.current || undefined,
+            type: typeFilterRef.current !== 'all' ? typeFilterRef.current : undefined,
+            from: range?.from ? format(range.from, 'yyyy-MM-dd') : undefined,
+            to: range?.to ? format(range.to, 'yyyy-MM-dd') : undefined,
+            sort: filters.sort,
+            order: filters.order,
+            ...overrides,
+        };
+        router.get(filesRoute.index.url(), params, { preserveState: true, replace: true });
+    }
+
+    function cancelPendingSearch() {
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+            searchTimeoutRef.current = null;
+        }
+    }
+
+    function handleSearchChange(value: string) {
+        setSearch(value);
+        searchRef.current = value;
+        cancelPendingSearch();
+        searchTimeoutRef.current = setTimeout(() => navigate({ search: value || undefined }), 350);
+    }
+
+    function handleTypeChange(value: string) {
+        cancelPendingSearch();
+        setTypeFilter(value);
+        typeFilterRef.current = value;
+        navigate({ type: value !== 'all' ? value : undefined });
+    }
+
+    function handleDateRangeChange(range: DateRange | undefined) {
+        setDateRange(range);
+        dateRangeRef.current = range;
+        if (!range || range.to) {
+            cancelPendingSearch();
+            navigate({
+                from: range?.from ? format(range.from, 'yyyy-MM-dd') : undefined,
+                to: range?.to ? format(range.to, 'yyyy-MM-dd') : undefined,
+            });
+        }
+    }
+
+    function handleSort(column: string) {
+        const newOrder = filters.sort === column && filters.order === 'asc' ? 'desc' : 'asc';
+        navigate({ sort: column, order: newOrder });
+    }
+
+    function clearFilters() {
+        cancelPendingSearch();
+        setSearch('');
+        setTypeFilter('all');
+        setDateRange(undefined);
+        searchRef.current = '';
+        typeFilterRef.current = 'all';
+        dateRangeRef.current = undefined;
+        router.get(filesRoute.index.url(), {}, { preserveState: true, replace: true });
+    }
+
+    function handleDelete() {
+        if (!fileToDelete) return;
+        setIsDeleting(true);
+        router.delete(filesRoute.destroy(fileToDelete.id).url, {
+            preserveScroll: true,
+            onFinish: () => {
+                setIsDeleting(false);
+                setFileToDelete(null);
+            },
+        });
+    }
+
+    const columns: ColumnDef<FileRecord>[] = [
+        {
+            accessorKey: 'name',
+            header: () => (
+                <button
+                    className="flex cursor-pointer items-center hover:text-foreground"
+                    onClick={() => handleSort('name')}
+                >
+                    Name <SortIcon column="name" sort={filters.sort} order={filters.order} />
+                </button>
+            ),
+            cell: ({ row }) => (
+                <div className="flex items-center gap-2">
+                    {row.original.type === 'video' ? (
+                        <Film className="size-4 shrink-0 text-blue-500" />
+                    ) : (
+                        <Music className="size-4 shrink-0 text-purple-500" />
+                    )}
+                    <span className="max-w-[240px] truncate font-medium">{row.original.name}</span>
+                </div>
+            ),
+        },
+        {
+            accessorKey: 'mime_type',
+            header: () => (
+                <button
+                    className="flex cursor-pointer items-center hover:text-foreground"
+                    onClick={() => handleSort('mime_type')}
+                >
+                    Type <SortIcon column="mime_type" sort={filters.sort} order={filters.order} />
+                </button>
+            ),
+            cell: ({ row }) => (
+                <span className="text-muted-foreground text-xs">{row.original.mime_type}</span>
+            ),
+        },
+        {
+            accessorKey: 'size',
+            header: () => (
+                <button
+                    className="flex cursor-pointer items-center hover:text-foreground"
+                    onClick={() => handleSort('size')}
+                >
+                    Size <SortIcon column="size" sort={filters.sort} order={filters.order} />
+                </button>
+            ),
+            cell: ({ row }) => (
+                <span className="text-muted-foreground">{formatBytes(row.original.size)}</span>
+            ),
+        },
+        {
+            id: 'folder',
+            header: 'Folder',
+            cell: ({ row }) =>
+                row.original.folder ? (
+                    <span className="text-muted-foreground text-sm">{row.original.folder.name}</span>
+                ) : (
+                    <span className="text-muted-foreground/40 text-sm">—</span>
+                ),
+        },
+        ...(isAdmin
+            ? [
+                  {
+                      id: 'owner',
+                      header: 'Owner',
+                      cell: ({ row }: { row: { original: FileRecord } }) => (
+                          <span className="text-muted-foreground text-sm">{row.original.user.name}</span>
+                      ),
+                  } as ColumnDef<FileRecord>,
+              ]
+            : []),
+        {
+            accessorKey: 'created_at',
+            header: () => (
+                <button
+                    className="flex cursor-pointer items-center hover:text-foreground"
+                    onClick={() => handleSort('created_at')}
+                >
+                    Uploaded <SortIcon column="created_at" sort={filters.sort} order={filters.order} />
+                </button>
+            ),
+            cell: ({ row }) => (
+                <span className="text-muted-foreground whitespace-nowrap text-sm">
+                    {format(parseISO(row.original.created_at), 'MMM d, yyyy HH:mm')}
+                </span>
+            ),
+        },
+        {
+            id: 'actions',
+            header: '',
+            cell: ({ row }) => (
+                <div className="flex items-center justify-end gap-1">
+                    <Link href={filesRoute.show(row.original.id).url}>
+                        <Button variant="ghost" size="icon" className="size-7" title="View">
+                            <Eye className="size-3.5" />
+                        </Button>
+                    </Link>
+                    <a href={filesRoute.download(row.original.id).url}>
+                        <Button variant="ghost" size="icon" className="size-7" title="Download">
+                            <Download className="size-3.5" />
+                        </Button>
+                    </a>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive size-7"
+                        title="Delete"
+                        onClick={() => setFileToDelete(row.original)}
+                    >
+                        <Trash2 className="size-3.5" />
+                    </Button>
+                </div>
+            ),
+        },
+    ];
+
+    const table = useReactTable({
+        data: files.data,
+        columns,
+        getCoreRowModel: getCoreRowModel(),
+        manualSorting: true,
+    });
+
+    const hasActiveFilters = Boolean(search || typeFilter !== 'all' || dateRange);
+
     return (
         <>
             <Head title="Files" />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 lg:p-6">
 
+            <div className="flex h-full flex-1 flex-col gap-4 p-4 lg:p-6">
                 {/* Toolbar */}
-                <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                        <Link
-                            href={files.index().url}
-                            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${!type ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-                        >
-                            All
-                        </Link>
-                        <Link
-                            href={files.index({ query: { type: 'video' } }).url}
-                            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${type === 'video' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-                        >
-                            <Film className="size-3.5" />
-                            Video
-                        </Link>
-                        <Link
-                            href={files.index({ query: { type: 'audio' } }).url}
-                            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${type === 'audio' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-                        >
-                            <Music className="size-3.5" />
-                            Audio
-                        </Link>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Input
+                            placeholder="Search files…"
+                            value={search}
+                            onChange={(e) => handleSearchChange(e.target.value)}
+                            className="h-8 w-52"
+                        />
+                        <Select value={typeFilter} onValueChange={handleTypeChange}>
+                            <SelectTrigger size="sm" className="w-32">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All types</SelectItem>
+                                <SelectItem value="video">
+                                    <span className="flex items-center gap-1.5">
+                                        <Film className="size-3.5 text-blue-500" />
+                                        Video
+                                    </span>
+                                </SelectItem>
+                                <SelectItem value="audio">
+                                    <span className="flex items-center gap-1.5">
+                                        <Music className="size-3.5 text-purple-500" />
+                                        Audio
+                                    </span>
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <DateRangePicker
+                            value={dateRange}
+                            onChange={handleDateRangeChange}
+                            className="h-8 text-sm"
+                            placeholder="Date range"
+                        />
+                        {hasActiveFilters && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-muted-foreground h-8 px-2 text-xs"
+                                onClick={clearFilters}
+                            >
+                                Clear filters
+                            </Button>
+                        )}
                     </div>
-
-                    <div className="flex items-center gap-2">
-                        <button className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
-                            <SlidersHorizontal className="size-3.5" />
-                            Sort
-                        </button>
-                        <Link
-                            href={upload.create().url}
-                            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                        >
+                    <Link href={uploadRoute.create.url()}>
+                        <Button size="sm" className="h-8 gap-1.5">
                             <Upload className="size-3.5" />
                             Upload
-                        </Link>
-                    </div>
-                </div>
-
-                {/* File grid — TODO: replace with real data */}
-                <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-sidebar-border/70 p-6 text-center dark:border-sidebar-border">
-                    <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-                        <Film className="size-5 text-muted-foreground" />
-                    </div>
-                    <p className="text-sm font-medium">No files yet</p>
-                    <p className="text-xs text-muted-foreground">Upload your first audio or video file to get started</p>
-                    <Link
-                        href={upload.create().url}
-                        className="mt-1 text-xs text-primary underline underline-offset-4 hover:text-primary/80"
-                    >
-                        Upload a file
+                        </Button>
                     </Link>
                 </div>
+
+                {/* Table */}
+                <div className="rounded-xl border overflow-hidden">
+                    {files.data.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center gap-3 p-12 text-center">
+                            <div className="bg-muted flex size-12 items-center justify-center rounded-full">
+                                <Film className="text-muted-foreground size-5" />
+                            </div>
+                            <p className="text-sm font-medium">No files found</p>
+                            <p className="text-muted-foreground text-xs">
+                                {hasActiveFilters
+                                    ? 'Try adjusting your filters'
+                                    : 'Upload your first file to get started'}
+                            </p>
+                            {!hasActiveFilters && (
+                                <Link
+                                    href={uploadRoute.create.url()}
+                                    className="text-primary text-xs underline underline-offset-4"
+                                >
+                                    Upload a file
+                                </Link>
+                            )}
+                        </div>
+                    ) : (
+                        <table className="w-full text-sm">
+                            <thead className="bg-muted/50 border-b">
+                                {table.getHeaderGroups().map((headerGroup) => (
+                                    <tr key={headerGroup.id}>
+                                        {headerGroup.headers.map((header) => (
+                                            <th
+                                                key={header.id}
+                                                className="text-muted-foreground px-4 py-2.5 text-left text-xs font-medium"
+                                            >
+                                                {!header.isPlaceholder &&
+                                                    flexRender(
+                                                        header.column.columnDef.header,
+                                                        header.getContext(),
+                                                    )}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </thead>
+                            <tbody>
+                                {table.getRowModel().rows.map((row) => (
+                                    <tr
+                                        key={row.id}
+                                        className="hover:bg-muted/30 border-b transition-colors last:border-0"
+                                    >
+                                        {row.getVisibleCells().map((cell) => (
+                                            <td key={cell.id} className="px-4 py-3">
+                                                {flexRender(
+                                                    cell.column.columnDef.cell,
+                                                    cell.getContext(),
+                                                )}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+
+                {/* Pagination */}
+                {files.last_page > 1 && (
+                    <div className="text-muted-foreground flex items-center justify-between text-sm">
+                        <span>
+                            {files.from}–{files.to} of {files.total} files
+                        </span>
+                        <div className="flex items-center gap-1">
+                            {files.links.map((link, i) =>
+                                link.url ? (
+                                    <Link
+                                        key={i}
+                                        href={link.url}
+                                        preserveState
+                                        className={`rounded px-2.5 py-1 text-xs transition-colors ${
+                                            link.active
+                                                ? 'bg-primary text-primary-foreground'
+                                                : 'hover:bg-muted'
+                                        }`}
+                                    >
+                                        {decodePaginationLabel(link.label)}
+                                    </Link>
+                                ) : (
+                                    <span
+                                        key={i}
+                                        className="cursor-default rounded px-2.5 py-1 text-xs opacity-40"
+                                    >
+                                        {decodePaginationLabel(link.label)}
+                                    </span>
+                                ),
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
+
+            {/* Delete confirmation dialog */}
+            <Dialog open={!!fileToDelete} onOpenChange={(open) => !open && setFileToDelete(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete file</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete{' '}
+                            <span className="text-foreground font-medium">{fileToDelete?.name}</span>?
+                            This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setFileToDelete(null)}
+                            disabled={isDeleting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+                            {isDeleting ? 'Deleting…' : 'Delete'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }
@@ -78,6 +530,6 @@ export default function FilesIndex({ type, sort, order }: Props) {
 FilesIndex.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Files', href: files.index() },
+        { title: 'Files', href: filesRoute.index() },
     ],
 };
