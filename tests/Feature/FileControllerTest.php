@@ -111,6 +111,102 @@ class FileControllerTest extends TestCase
         $this->assertFalse($ids->contains($old->id));
     }
 
+    // --- show ---
+
+    public function test_guests_are_redirected_from_show(): void
+    {
+        $file = File::factory()->for(User::factory()->create())->create();
+
+        $this->get(route('files.show', $file->id))->assertRedirect(route('login'));
+    }
+
+    public function test_user_can_view_own_file(): void
+    {
+        $user = User::factory()->create();
+        $file = File::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)->get(route('files.show', $file->id));
+
+        $response->assertOk();
+        $props = $response->original->getData()['page']['props'];
+        $this->assertSame($file->id, $props['file']['id']);
+        $this->assertArrayHasKey('streamUrl', $props);
+        $this->assertArrayHasKey('downloadUrl', $props);
+    }
+
+    public function test_user_cannot_view_another_users_file(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $file = File::factory()->for($owner)->create();
+
+        $this->actingAs($other)->get(route('files.show', $file->id))->assertNotFound();
+    }
+
+    public function test_admin_can_view_any_file(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $owner = User::factory()->create();
+        $file = File::factory()->for($owner)->create();
+
+        $this->actingAs($admin)->get(route('files.show', $file->id))->assertOk();
+    }
+
+    // --- stream ---
+
+    public function test_guests_are_redirected_from_stream(): void
+    {
+        $file = File::factory()->for(User::factory()->create())->create();
+
+        $this->get(route('files.stream', $file->id))->assertRedirect(route('login'));
+    }
+
+    public function test_user_can_stream_own_file(): void
+    {
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $file = File::factory()->for($user)->create([
+            'disk' => 'local',
+            'path' => 'media/test.mp4',
+            'mime_type' => 'video/mp4',
+        ]);
+        Storage::disk('local')->put('media/test.mp4', 'fake video content');
+
+        $this->actingAs($user)->get(route('files.stream', $file->id))->assertOk();
+    }
+
+    public function test_user_cannot_stream_another_users_file(): void
+    {
+        Storage::fake('local');
+
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $file = File::factory()->for($owner)->create([
+            'disk' => 'local',
+            'path' => 'media/test.mp4',
+        ]);
+        Storage::disk('local')->put('media/test.mp4', 'fake video content');
+
+        $this->actingAs($other)->get(route('files.stream', $file->id))->assertNotFound();
+    }
+
+    public function test_admin_can_stream_any_file(): void
+    {
+        Storage::fake('local');
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $owner = User::factory()->create();
+        $file = File::factory()->for($owner)->create([
+            'disk' => 'local',
+            'path' => 'media/test.mp4',
+            'mime_type' => 'video/mp4',
+        ]);
+        Storage::disk('local')->put('media/test.mp4', 'fake video content');
+
+        $this->actingAs($admin)->get(route('files.stream', $file->id))->assertOk();
+    }
+
     // --- download ---
 
     public function test_user_can_download_own_file(): void
@@ -153,7 +249,7 @@ class FileControllerTest extends TestCase
 
         $response = $this->actingAs($user)->delete(route('files.destroy', $file->id));
 
-        $response->assertRedirect();
+        $response->assertRedirect(route('files.index'));
         $this->assertDatabaseMissing('files', ['id' => $file->id]);
         Storage::disk('local')->assertMissing('media/test.mp4');
     }
@@ -181,7 +277,7 @@ class FileControllerTest extends TestCase
         $file = File::factory()->for($owner)->create(['disk' => 'local', 'path' => 'media/test.mp4']);
         Storage::disk('local')->put('media/test.mp4', 'fake content');
 
-        $this->actingAs($admin)->delete(route('files.destroy', $file->id))->assertRedirect();
+        $this->actingAs($admin)->delete(route('files.destroy', $file->id))->assertRedirect(route('files.index'));
 
         $this->assertDatabaseMissing('files', ['id' => $file->id]);
     }

@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FileController extends Controller
@@ -59,9 +60,37 @@ class FileController extends Controller
         ]);
     }
 
-    public function show(int $id): Response
+    public function show(int $id, Request $request): Response
     {
-        return Inertia::render('files/show');
+        $user = $request->user();
+
+        $query = File::query()->with(['folder', 'user']);
+        if (! $user->is_admin) {
+            $query->where('user_id', $user->id);
+        }
+
+        $file = $query->findOrFail($id);
+
+        return Inertia::render('files/show', [
+            'file' => $file,
+            'streamUrl' => route('files.stream', $file->id),
+            'downloadUrl' => route('files.download', $file->id),
+        ]);
+    }
+
+    public function stream(int $id, Request $request): BinaryFileResponse
+    {
+        $user = $request->user();
+
+        $query = File::query();
+        if (! $user->is_admin) {
+            $query->where('user_id', $user->id);
+        }
+
+        $file = $query->findOrFail($id);
+        $path = Storage::disk($file->disk)->path($file->path);
+
+        return response()->file($path, ['Content-Type' => $file->mime_type]);
     }
 
     public function download(int $id, Request $request): StreamedResponse
@@ -92,6 +121,6 @@ class FileController extends Controller
         Storage::disk($file->disk)->delete($file->path);
         $file->delete();
 
-        return back();
+        return redirect()->route('files.index');
     }
 }

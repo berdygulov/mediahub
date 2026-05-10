@@ -20,6 +20,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Files
     Route::get('files', [FileController::class, 'index'])->name('files.index');
     Route::get('files/{id}', [FileController::class, 'show'])->name('files.show');
+    Route::get('files/{id}/stream', [FileController::class, 'stream'])->name('files.stream');
     Route::get('files/{id}/download', [FileController::class, 'download'])->name('files.download');
     Route::delete('files/{id}', [FileController::class, 'destroy'])->name('files.destroy');
 
