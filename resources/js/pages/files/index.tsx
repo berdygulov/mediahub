@@ -1,10 +1,11 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
-    type ColumnDef,
+    
     flexRender,
     getCoreRowModel,
-    useReactTable,
+    useReactTable
 } from '@tanstack/react-table';
+import type {ColumnDef} from '@tanstack/react-table';
 import { format, parseISO } from 'date-fns';
 import {
     ArrowDown,
@@ -95,9 +96,18 @@ interface Props {
 }
 
 function formatBytes(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    if (bytes < 1024) {
+return `${bytes} B`;
+}
+
+    if (bytes < 1024 * 1024) {
+return `${(bytes / 1024).toFixed(1)} KB`;
+}
+
+    if (bytes < 1024 * 1024 * 1024) {
+return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
     return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
 }
 
@@ -106,7 +116,10 @@ function decodePaginationLabel(label: string): string {
 }
 
 function SortIcon({ column, sort, order }: { column: string; sort: string; order: string }) {
-    if (sort !== column) return <ArrowUpDown className="ml-1 inline size-3 opacity-40" />;
+    if (sort !== column) {
+return <ArrowUpDown className="ml-1 inline size-3 opacity-40" />;
+}
+
     return order === 'asc' ? (
         <ArrowUp className="ml-1 inline size-3" />
     ) : (
@@ -179,6 +192,7 @@ export default function FilesIndex({ files, filters }: Props) {
     function handleDateRangeChange(range: DateRange | undefined) {
         setDateRange(range);
         dateRangeRef.current = range;
+
         if (!range || range.to) {
             cancelPendingSearch();
             navigate({
@@ -205,7 +219,10 @@ export default function FilesIndex({ files, filters }: Props) {
     }
 
     function handleDelete() {
-        if (!fileToDelete) return;
+        if (!fileToDelete) {
+return;
+}
+
         setIsDeleting(true);
         router.delete(filesRoute.destroy(fileToDelete.id).url, {
             preserveScroll: true,

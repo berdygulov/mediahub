@@ -1,7 +1,7 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { Folder, FolderPlus } from 'lucide-react';
-import * as foldersRoute from '@/routes/folders';
 import { dashboard } from '@/routes';
+import * as foldersRoute from '@/routes/folders';
 
 export default function FoldersIndex() {
     return (

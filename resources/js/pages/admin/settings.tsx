@@ -1,7 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { Settings } from 'lucide-react';
-import * as adminSettings from '@/routes/admin/settings';
 import { dashboard } from '@/routes';
+import * as adminSettings from '@/routes/admin/settings';
 
 export default function AdminSettings() {
     return (

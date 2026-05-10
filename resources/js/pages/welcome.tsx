@@ -1,6 +1,6 @@
 import { Head, Link, usePage } from '@inertiajs/react';
+import { Upload, Film, Image, Share2 } from 'lucide-react';
 import { dashboard, login, register } from '@/routes';
-import { Upload, Film, Image, FileText, Share2 } from 'lucide-react';
 
 export default function Welcome({
     canRegister = true,

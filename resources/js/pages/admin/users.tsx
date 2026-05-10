@@ -1,7 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { Users } from 'lucide-react';
-import * as adminUsers from '@/routes/admin/users';
 import { dashboard } from '@/routes';
+import * as adminUsers from '@/routes/admin/users';
 
 export default function AdminUsers() {
     return (

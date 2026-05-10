@@ -1,7 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { ScrollText } from 'lucide-react';
-import * as adminLogs from '@/routes/admin/logs';
 import { dashboard } from '@/routes';
+import * as adminLogs from '@/routes/admin/logs';
 
 export default function AdminLogs() {
     return (

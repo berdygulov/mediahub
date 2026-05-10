@@ -1,8 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Film, Music, X } from 'lucide-react';
+import { Search, Film, Music } from 'lucide-react';
 import { useState } from 'react';
-import * as searchRoute from '@/routes/search';
 import { dashboard } from '@/routes';
+import * as searchRoute from '@/routes/search';
 
 interface Props {
     query: string;

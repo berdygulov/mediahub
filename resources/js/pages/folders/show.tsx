@@ -1,14 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Film, Folder } from 'lucide-react';
-import * as foldersRoute from '@/routes/folders';
 import { dashboard } from '@/routes';
+import * as foldersRoute from '@/routes/folders';
 
-interface Props {
-    // TODO: replace with real Folder type when model is ready
-    id?: number;
-}
-
-export default function FoldersShow({ id }: Props) {
+export default function FoldersShow() {
     return (
         <>
             <Head title="Folder" />

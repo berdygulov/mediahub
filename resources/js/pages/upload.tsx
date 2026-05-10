@@ -1,14 +1,15 @@
-import { useRef, useState } from 'react';
 import { Head } from '@inertiajs/react';
 import { router } from '@inertiajs/react';
-import { useDropzone, type FileRejection } from 'react-dropzone';
 import { AlertCircle, CheckCircle2, Clock, CloudUpload, Film, Music } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { useDropzone  } from 'react-dropzone';
+import type {FileRejection} from 'react-dropzone';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import * as uploadRoute from '@/routes/upload';
-import { toast } from 'sonner';
 
 const MAX_SIZE_BYTES = 500 * 1024 * 1024;
 
@@ -37,9 +38,18 @@ interface QueueItem {
 }
 
 function formatBytes(bytes: number): string {
-    if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-    if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes >= 1024 * 1024 * 1024) {
+return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+    if (bytes >= 1024 * 1024) {
+return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+    if (bytes >= 1024) {
+return `${(bytes / 1024).toFixed(1)} KB`;
+}
+
     return `${bytes} B`;
 }
 
@@ -55,10 +65,15 @@ export default function UploadPage() {
     };
 
     const startNext = () => {
-        if (uploadingRef.current) return;
+        if (uploadingRef.current) {
+return;
+}
 
         const next = queueRef.current.find((q) => q.status === 'pending');
-        if (!next) return;
+
+        if (!next) {
+return;
+}
 
         uploadingRef.current = next.id;
         setQueue(queueRef.current.map((q) => (q.id === next.id ? { ...q, status: 'uploading' as const } : q)));
@@ -68,7 +83,10 @@ export default function UploadPage() {
             preserveState: true,
             preserveScroll: true,
             onProgress: (p) => {
-                if (!p) return;
+                if (!p) {
+return;
+}
+
                 setQueue(queueRef.current.map((q) => (q.id === next.id ? { ...q, progress: p.percentage ?? 0 } : q)));
             },
             onSuccess: () => {
@@ -96,7 +114,9 @@ export default function UploadPage() {
             toast.error(msg);
         });
 
-        if (!accepted.length) return;
+        if (!accepted.length) {
+return;
+}
 
         const newItems: QueueItem[] = accepted.map((file) => ({
             id: crypto.randomUUID(),
