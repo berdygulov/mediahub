@@ -47,15 +47,25 @@ interface Props {
 }
 
 function formatBytes(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    if (bytes < 1024) {
+        return `${bytes} B`;
+    }
+
+    if (bytes < 1024 * 1024) {
+        return `${(bytes / 1024).toFixed(1)} KB`;
+    }
+
+    if (bytes < 1024 * 1024 * 1024) {
+        return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    }
+
     return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
 }
 
 function formatTime(seconds: number): string {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
+
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
@@ -64,7 +74,9 @@ function VideoPlayer({ streamUrl, mimeType }: { streamUrl: string; mimeType: str
     const plyrRef = React.useRef<Plyr | null>(null);
 
     React.useEffect(() => {
-        if (!videoRef.current) return;
+        if (!videoRef.current) {
+            return;
+        }
 
         plyrRef.current = new Plyr(videoRef.current, {
             controls: [
@@ -95,7 +107,6 @@ function VideoPlayer({ streamUrl, mimeType }: { streamUrl: string; mimeType: str
 
 function AudioPlayer({ streamUrl }: { streamUrl: string }) {
     const waveformRef = React.useRef<HTMLDivElement>(null);
-    const spectrogramRef = React.useRef<HTMLDivElement>(null);
     const wavesurferRef = React.useRef<WaveSurfer | null>(null);
 
     const [isPlaying, setIsPlaying] = React.useState(false);
@@ -105,8 +116,13 @@ function AudioPlayer({ streamUrl }: { streamUrl: string }) {
     const [volume, setVolume] = React.useState(0.8);
     const [isLoading, setIsLoading] = React.useState(true);
 
+    const volumeRef = React.useRef(volume);
+    volumeRef.current = volume;
+
     React.useEffect(() => {
-        if (!waveformRef.current || !spectrogramRef.current) return;
+        if (!waveformRef.current) {
+            return;
+        }
 
         const ws = WaveSurfer.create({
             container: waveformRef.current,
@@ -118,20 +134,25 @@ function AudioPlayer({ streamUrl }: { streamUrl: string }) {
             barRadius: 2,
             height: 80,
             normalize: true,
-            plugins: [
-                SpectrogramPlugin.create({
-                    container: spectrogramRef.current,
-                    height: 120,
-                    labels: true,
-                    labelsColor: '#94a3b8',
-                    labelsBackground: 'transparent',
-                    fftSamples: 512,
-                    frequencyMax: 8000,
-                    scale: 'mel',
-                    colorMap: 'roseus',
-                }),
-            ],
+            sampleRate: 44100,
         });
+
+        ws.registerPlugin(
+            SpectrogramPlugin.create({
+                labels: true,
+                height: 120,
+                labelsBackground: 'rgba(0,0,0,0.1)',
+                fftSamples: 1024,
+                frequencyMin: 0,
+                frequencyMax: 8000,
+                scale: 'mel',
+                colorMap: 'roseus',
+                windowFunc: 'hann',
+                gainDB: 20,
+                rangeDB: 80,
+                useWebWorker: true,
+            }),
+        );
 
         ws.load(streamUrl);
         wavesurferRef.current = ws;
@@ -139,7 +160,7 @@ function AudioPlayer({ streamUrl }: { streamUrl: string }) {
         ws.on('ready', (dur) => {
             setDuration(dur);
             setIsLoading(false);
-            ws.setVolume(volume);
+            ws.setVolume(volumeRef.current);
         });
 
         ws.on('timeupdate', (time) => setCurrentTime(time));
@@ -156,7 +177,11 @@ function AudioPlayer({ streamUrl }: { streamUrl: string }) {
 
     function toggleMute() {
         const ws = wavesurferRef.current;
-        if (!ws) return;
+
+        if (!ws) {
+            return;
+        }
+
         const next = !isMuted;
         ws.setMuted(next);
         setIsMuted(next);
@@ -166,6 +191,7 @@ function AudioPlayer({ streamUrl }: { streamUrl: string }) {
         const val = parseFloat(e.target.value);
         setVolume(val);
         wavesurferRef.current?.setVolume(val);
+
         if (val > 0 && isMuted) {
             wavesurferRef.current?.setMuted(false);
             setIsMuted(false);
@@ -174,23 +200,13 @@ function AudioPlayer({ streamUrl }: { streamUrl: string }) {
 
     return (
         <div className="flex flex-col gap-3">
-            <div className="rounded-lg bg-muted/50 p-4">
+            <div className="relative rounded-lg bg-muted/50 p-4">
                 {isLoading && (
-                    <div className="flex h-20 animate-pulse items-center justify-center">
+                    <div className="absolute inset-0 z-10 flex animate-pulse items-center justify-center rounded-lg bg-muted/80">
                         <span className="text-muted-foreground text-sm">Loading waveform…</span>
                     </div>
                 )}
-                <div ref={waveformRef} className={isLoading ? 'hidden' : ''} />
-            </div>
-
-            <div className="rounded-lg bg-muted/50 p-4">
-                <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
-                    Frequency Spectrum
-                </p>
-                {isLoading ? (
-                    <div className="h-[120px] animate-pulse rounded bg-muted" />
-                ) : null}
-                <div ref={spectrogramRef} className={isLoading ? 'hidden' : ''} />
+                <div ref={waveformRef} />
             </div>
 
             <div className="flex items-center gap-3">
