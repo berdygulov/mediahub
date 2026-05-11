@@ -18,4 +18,12 @@ class FolderFactory extends Factory
             'name' => fake()->words(2, true),
         ];
     }
+
+    public function withParent(Folder $parent): static
+    {
+        return $this->state([
+            'user_id' => $parent->user_id,
+            'parent_id' => $parent->id,
+        ]);
+    }
 }
