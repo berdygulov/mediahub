@@ -22,6 +22,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('files/{id}', [FileController::class, 'show'])->name('files.show');
     Route::get('files/{id}/stream', [FileController::class, 'stream'])->name('files.stream');
     Route::get('files/{id}/download', [FileController::class, 'download'])->name('files.download');
+    Route::get('files/{id}/folders', [FileController::class, 'folderTree'])->name('files.folders');
+    Route::patch('files/{id}/folder', [FileController::class, 'moveFolder'])->name('files.move-folder');
     Route::delete('files/{id}', [FileController::class, 'destroy'])->name('files.destroy');
 
     // Folders

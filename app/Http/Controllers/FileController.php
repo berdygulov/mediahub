@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\File;
+use App\Models\Folder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -105,6 +108,49 @@ class FileController extends Controller
         $file = $query->findOrFail($id);
 
         return Storage::disk($file->disk)->download($file->path, $file->name);
+    }
+
+    public function folderTree(int $id, Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $query = File::query();
+        if (! $user->is_admin) {
+            $query->where('user_id', $user->id);
+        }
+
+        $file = $query->findOrFail($id);
+
+        $folders = Folder::query()
+            ->where('user_id', $file->user_id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'parent_id']);
+
+        return response()->json($folders);
+    }
+
+    public function moveFolder(int $id, Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $query = File::query();
+        if (! $user->is_admin) {
+            $query->where('user_id', $user->id);
+        }
+
+        $file = $query->findOrFail($id);
+
+        $validated = $request->validate([
+            'folder_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('folders', 'id')->where('user_id', $file->user_id),
+            ],
+        ]);
+
+        $file->update(['folder_id' => $validated['folder_id']]);
+
+        return back();
     }
 
     public function destroy(int $id, Request $request): RedirectResponse

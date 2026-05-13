@@ -1,19 +1,17 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import {
-    
-    flexRender,
-    getCoreRowModel,
-    useReactTable
-} from '@tanstack/react-table';
-import type {ColumnDef} from '@tanstack/react-table';
+import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import type { ColumnDef } from '@tanstack/react-table';
 import { format, parseISO } from 'date-fns';
 import {
     ArrowDown,
     ArrowUp,
     ArrowUpDown,
+    ChevronRight,
     Download,
     Eye,
     Film,
+    Folder,
+    FolderInput,
     Music,
     Trash2,
     Upload,
@@ -39,6 +37,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import * as filesRoute from '@/routes/files';
 import * as uploadRoute from '@/routes/upload';
@@ -95,18 +96,121 @@ interface Props {
     filters: Filters;
 }
 
+interface FlatFolder {
+    id: number;
+    name: string;
+    parent_id: number | null;
+}
+
+interface FolderNode extends FlatFolder {
+    children: FolderNode[];
+}
+
+function buildTree(folders: FlatFolder[]): FolderNode[] {
+    const map = new Map<number, FolderNode>();
+    const roots: FolderNode[] = [];
+
+    for (const f of folders) {
+        map.set(f.id, { ...f, children: [] });
+    }
+
+    for (const f of folders) {
+        const node = map.get(f.id)!;
+        if (f.parent_id === null) {
+            roots.push(node);
+        } else {
+            map.get(f.parent_id)?.children.push(node);
+        }
+    }
+
+    return roots;
+}
+
+function getAncestorIds(folders: FlatFolder[], folderId: number | null): Set<number> {
+    if (folderId === null) {
+        return new Set();
+    }
+
+    const map = new Map(folders.map((f) => [f.id, f]));
+    const ancestors = new Set<number>();
+    let current = map.get(folderId);
+
+    while (current?.parent_id != null) {
+        ancestors.add(current.parent_id);
+        current = map.get(current.parent_id);
+    }
+
+    return ancestors;
+}
+
+function FolderNodeItem({
+    node,
+    selectedId,
+    onSelect,
+    openIds,
+}: {
+    node: FolderNode;
+    selectedId: number | null;
+    onSelect: (id: number | null) => void;
+    openIds: Set<number>;
+}) {
+    const hasChildren = node.children.length > 0;
+
+    return (
+        <Collapsible defaultOpen={openIds.has(node.id)}>
+            <div className="flex items-center gap-0.5">
+                {hasChildren ? (
+                    <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="icon" className="size-6 shrink-0">
+                            <ChevronRight className="size-3 transition-transform duration-150 [[data-state=open]_&]:rotate-90" />
+                        </Button>
+                    </CollapsibleTrigger>
+                ) : (
+                    <span className="size-6 shrink-0" />
+                )}
+                <button
+                    type="button"
+                    className={cn(
+                        'flex flex-1 items-center gap-1.5 rounded px-2 py-1 text-sm transition-colors hover:bg-accent',
+                        selectedId === node.id && 'bg-accent font-medium',
+                    )}
+                    onClick={() => onSelect(node.id)}
+                >
+                    <Folder className="size-3.5 shrink-0 text-muted-foreground" />
+                    {node.name}
+                </button>
+            </div>
+            {hasChildren && (
+                <CollapsibleContent>
+                    <div className="ml-6 border-l pl-1">
+                        {node.children.map((child) => (
+                            <FolderNodeItem
+                                key={child.id}
+                                node={child}
+                                selectedId={selectedId}
+                                onSelect={onSelect}
+                                openIds={openIds}
+                            />
+                        ))}
+                    </div>
+                </CollapsibleContent>
+            )}
+        </Collapsible>
+    );
+}
+
 function formatBytes(bytes: number): string {
     if (bytes < 1024) {
-return `${bytes} B`;
-}
+        return `${bytes} B`;
+    }
 
     if (bytes < 1024 * 1024) {
-return `${(bytes / 1024).toFixed(1)} KB`;
-}
+        return `${(bytes / 1024).toFixed(1)} KB`;
+    }
 
     if (bytes < 1024 * 1024 * 1024) {
-return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
+        return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    }
 
     return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
 }
@@ -117,8 +221,8 @@ function decodePaginationLabel(label: string): string {
 
 function SortIcon({ column, sort, order }: { column: string; sort: string; order: string }) {
     if (sort !== column) {
-return <ArrowUpDown className="ml-1 inline size-3 opacity-40" />;
-}
+        return <ArrowUpDown className="ml-1 inline size-3 opacity-40" />;
+    }
 
     return order === 'asc' ? (
         <ArrowUp className="ml-1 inline size-3" />
@@ -144,15 +248,50 @@ export default function FilesIndex({ files, filters }: Props) {
     const [fileToDelete, setFileToDelete] = React.useState<FileRecord | null>(null);
     const [isDeleting, setIsDeleting] = React.useState(false);
 
+    const [fileToMove, setFileToMove] = React.useState<FileRecord | null>(null);
+    const [foldersList, setFoldersList] = React.useState<FlatFolder[]>([]);
+    const [foldersLoading, setFoldersLoading] = React.useState(false);
+    const [selectedFolderId, setSelectedFolderId] = React.useState<number | null>(null);
+    const [isMoving, setIsMoving] = React.useState(false);
+
     const searchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Читаем актуальные значения фильтров через ref, чтобы navigate всегда видел свежие данные
     const searchRef = React.useRef(search);
     const typeFilterRef = React.useRef(typeFilter);
     const dateRangeRef = React.useRef(dateRange);
     searchRef.current = search;
     typeFilterRef.current = typeFilter;
     dateRangeRef.current = dateRange;
+
+    React.useEffect(() => {
+        if (!fileToMove) {
+            return;
+        }
+
+        setSelectedFolderId(fileToMove.folder?.id ?? null);
+        setFoldersList([]);
+        setFoldersLoading(true);
+
+        const controller = new AbortController();
+
+        fetch(filesRoute.folders(fileToMove.id).url, {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+            signal: controller.signal,
+        })
+            .then((r) => r.json())
+            .then((data: FlatFolder[]) => {
+                setFoldersList(data);
+                setFoldersLoading(false);
+            })
+            .catch((err: unknown) => {
+                if ((err as { name?: string }).name !== 'AbortError') {
+                    setFoldersLoading(false);
+                }
+            });
+
+        return () => controller.abort();
+    }, [fileToMove]);
 
     function navigate(overrides: Record<string, string | undefined> = {}) {
         const range = dateRangeRef.current;
@@ -220,8 +359,8 @@ export default function FilesIndex({ files, filters }: Props) {
 
     function handleDelete() {
         if (!fileToDelete) {
-return;
-}
+            return;
+        }
 
         setIsDeleting(true);
         router.delete(filesRoute.destroy(fileToDelete.id).url, {
@@ -232,6 +371,32 @@ return;
             },
         });
     }
+
+    function handleMoveFolder() {
+        if (!fileToMove) {
+            return;
+        }
+
+        setIsMoving(true);
+        router.patch(
+            filesRoute.moveFolder(fileToMove.id).url,
+            { folder_id: selectedFolderId },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => setFileToMove(null),
+                onFinish: () => setIsMoving(false),
+            },
+        );
+    }
+
+    const folderTree = React.useMemo(() => buildTree(foldersList), [foldersList]);
+    const ancestorIds = React.useMemo(
+        () => getAncestorIds(foldersList, fileToMove?.folder?.id ?? null),
+        [foldersList, fileToMove],
+    );
+
+    const isMoveUnchanged = selectedFolderId === (fileToMove?.folder?.id ?? null);
 
     const columns: ColumnDef<FileRecord>[] = [
         {
@@ -335,6 +500,15 @@ return;
                             <Download className="size-3.5" />
                         </Button>
                     </a>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7"
+                        title="Move to folder"
+                        onClick={() => setFileToMove(row.original)}
+                    >
+                        <FolderInput className="size-3.5" />
+                    </Button>
                     <Button
                         variant="ghost"
                         size="icon"
@@ -536,6 +710,74 @@ return;
                         </Button>
                         <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
                             {isDeleting ? 'Deleting…' : 'Delete'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Move to folder dialog */}
+            <Dialog open={!!fileToMove} onOpenChange={(open) => !open && setFileToMove(null)}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Move to folder</DialogTitle>
+                        <DialogDescription>
+                            Select a folder for{' '}
+                            <span className="text-foreground font-medium">{fileToMove?.name}</span>.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex flex-col gap-1">
+                        {/* No folder option */}
+                        <button
+                            type="button"
+                            className={cn(
+                                'flex items-center gap-1.5 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent',
+                                selectedFolderId === null && 'bg-accent font-medium',
+                            )}
+                            onClick={() => setSelectedFolderId(null)}
+                        >
+                            <Folder className="size-3.5 shrink-0 text-muted-foreground" />
+                            No folder
+                        </button>
+
+                        <div className="my-1 border-t" />
+
+                        {/* Folder tree */}
+                        <div className="max-h-64 overflow-y-auto">
+                            {foldersLoading ? (
+                                <div className="flex flex-col gap-1 px-2">
+                                    {[1, 2, 3].map((i) => (
+                                        <Skeleton key={i} className="h-7 w-full rounded" />
+                                    ))}
+                                </div>
+                            ) : folderTree.length === 0 ? (
+                                <p className="text-muted-foreground px-2 py-3 text-center text-sm">
+                                    No folders yet
+                                </p>
+                            ) : (
+                                folderTree.map((node) => (
+                                    <FolderNodeItem
+                                        key={node.id}
+                                        node={node}
+                                        selectedId={selectedFolderId}
+                                        onSelect={setSelectedFolderId}
+                                        openIds={ancestorIds}
+                                    />
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setFileToMove(null)}
+                            disabled={isMoving}
+                        >
+                            Cancel
+                        </Button>
+                        <Button onClick={handleMoveFolder} disabled={isMoving || isMoveUnchanged}>
+                            {isMoving ? 'Moving…' : 'Move'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
