@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
 import { ArrowLeft, Download, Pause, Play, Trash2, Volume2, VolumeX } from 'lucide-react';
+import Plyr from 'plyr';
 import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -65,12 +66,31 @@ function formatTime(seconds: number): string {
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-// ─── Video Player ─────────────────────────────────────────────────────────────
+// ─── Video Player (Plyr) ──────────────────────────────────────────────────────
 
 function VideoPlayer({ streamUrl, mimeType }: { streamUrl: string; mimeType: string }) {
+    const videoRef = React.useRef<HTMLVideoElement>(null);
+
+    React.useEffect(() => {
+        if (!videoRef.current) return;
+
+        let player: Plyr | null = null;
+        const frame = requestAnimationFrame(() => {
+            if (!videoRef.current) return;
+            player = new Plyr(videoRef.current, {
+                controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'pip', 'fullscreen', 'settings'],
+            });
+        });
+
+        return () => {
+            cancelAnimationFrame(frame);
+            player?.destroy();
+        };
+    }, [streamUrl]);
+
     return (
-        <div className="overflow-hidden rounded-lg bg-black">
-            <video controls playsInline className="w-full">
+        <div className="overflow-hidden rounded-lg">
+            <video ref={videoRef} playsInline>
                 <source src={streamUrl} type={mimeType} />
             </video>
         </div>
@@ -92,7 +112,6 @@ function AudioPlayer({ streamUrl }: { streamUrl: string }) {
 
     // Web Audio API refs
     const audioCtxRef = React.useRef<AudioContext | null>(null);
-    const analyserRef = React.useRef<AnalyserNode | null>(null);
     const gainRef = React.useRef<GainNode | null>(null);
     const audioBufferRef = React.useRef<AudioBuffer | null>(null);
     const sourceRef = React.useRef<AudioBufferSourceNode | null>(null);
@@ -127,7 +146,6 @@ function AudioPlayer({ streamUrl }: { streamUrl: string }) {
         analyser.connect(audioCtx.destination);
 
         audioCtxRef.current = audioCtx;
-        analyserRef.current = analyser;
         gainRef.current = gain;
         freqDataRef.current = new Uint8Array(analyser.frequencyBinCount);
 
@@ -561,15 +579,16 @@ export default function FilesShow({ file, streamUrl, downloadUrl }: Props) {
                     Back to files
                 </Link>
 
-                <div className="border-sidebar-border/70 dark:border-sidebar-border flex flex-1 flex-col gap-4 rounded-xl border p-6">
-                    {file.type === 'video' ? (
-                        <VideoPlayer streamUrl={streamUrl} mimeType={file.mime_type} />
-                    ) : (
-                        <AudioPlayer streamUrl={streamUrl} />
-                    )}
-
-                    <div className="border-t pt-4">
-                        <div className="flex items-start justify-between gap-4">
+                <div className="border-sidebar-border/70 dark:border-sidebar-border grid grid-cols-2 gap-4 rounded-xl border p-6">
+                    <div className="col-span-2 xl:col-span-1">
+                        {file.type === 'video' ? (
+                            <VideoPlayer streamUrl={streamUrl} mimeType={file.mime_type} />
+                        ) : (
+                            <AudioPlayer streamUrl={streamUrl} />
+                        )}
+                    </div>
+                    <div className="col-span-2 xl:col-span-1">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
                             <div className="flex flex-col gap-1">
                                 <h1 className="text-lg font-semibold">{file.name}</h1>
                                 <p className="text-muted-foreground text-sm">
@@ -577,9 +596,14 @@ export default function FilesShow({ file, streamUrl, downloadUrl }: Props) {
                                     {formatBytes(file.size)} · {file.mime_type}
                                 </p>
                                 <p className="text-muted-foreground text-xs">
-                                    Uploaded{' '}
+                                    Uploaded:{' '}
                                     {format(parseISO(file.created_at), 'MMM d, yyyy HH:mm')}
-                                    {file.folder && ` · ${file.folder.name}`}
+                                    {file.folder && (
+                                        <>
+                                            <br />
+                                            Folder: {file.folder.name}
+                                        </>
+                                    )}
                                 </p>
                             </div>
 
