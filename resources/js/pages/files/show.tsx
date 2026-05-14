@@ -1,8 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
 import { ArrowLeft, Download, Pause, Play, Trash2, Volume2, VolumeX } from 'lucide-react';
-import Plyr from 'plyr';
-import 'plyr/dist/plyr.css';
 import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -67,38 +65,12 @@ function formatTime(seconds: number): string {
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-// ─── Video Player (Plyr) ──────────────────────────────────────────────────────
+// ─── Video Player ─────────────────────────────────────────────────────────────
 
 function VideoPlayer({ streamUrl, mimeType }: { streamUrl: string; mimeType: string }) {
-    const videoRef = React.useRef<HTMLVideoElement>(null);
-    const plyrRef = React.useRef<Plyr | null>(null);
-
-    React.useEffect(() => {
-        if (!videoRef.current) {
-            return;
-        }
-
-        plyrRef.current = new Plyr(videoRef.current, {
-            controls: [
-                'play-large',
-                'play',
-                'progress',
-                'current-time',
-                'mute',
-                'volume',
-                'settings',
-                'fullscreen',
-            ],
-        });
-
-        return () => {
-            plyrRef.current?.destroy();
-        };
-    }, [streamUrl]);
-
     return (
-        <div className="overflow-hidden rounded-lg">
-            <video ref={videoRef} playsInline>
+        <div className="overflow-hidden rounded-lg bg-black">
+            <video controls playsInline className="w-full">
                 <source src={streamUrl} type={mimeType} />
             </video>
         </div>
