@@ -1,6 +1,7 @@
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 import * as React from "react"
 import { DayPicker } from "react-day-picker"
+import { ru } from "date-fns/locale"
 
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -14,13 +15,14 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
+      locale={ru}
+      className={cn("relative p-3", className)}
       classNames={{
         months: "flex flex-col gap-4 sm:flex-row",
         month: "relative flex flex-col gap-4",
         month_caption: "flex items-center justify-center pt-1",
         caption_label: "text-sm font-medium",
-        nav: "absolute inset-x-0 top-0 flex items-center justify-between px-1",
+        nav: "absolute w-full left-0 top-0 z-10 flex items-center justify-between p-3",
         button_previous: cn(
           buttonVariants({ variant: "outline" }),
           "size-7 bg-transparent p-0 opacity-50 hover:opacity-100"

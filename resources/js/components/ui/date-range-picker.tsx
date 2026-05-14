@@ -1,4 +1,5 @@
 import { format } from "date-fns"
+import { ru } from "date-fns/locale"
 import { CalendarIcon } from "lucide-react"
 import * as React from "react"
 import type { DateRange } from "react-day-picker"
@@ -7,12 +8,14 @@ import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+import type { DayPicker } from "react-day-picker"
 
 interface DateRangePickerProps {
   value?: DateRange
   onChange?: (range: DateRange | undefined) => void
   className?: string
   placeholder?: string
+  calendarProps?: Omit<React.ComponentProps<typeof DayPicker>, "mode" | "selected" | "onSelect" | "defaultMonth" | "numberOfMonths">
 }
 
 function DateRangePicker({
@@ -20,6 +23,7 @@ function DateRangePicker({
   onChange,
   className,
   placeholder = "Pick a date range",
+  calendarProps,
 }: DateRangePickerProps) {
   return (
     <Popover>
@@ -36,10 +40,10 @@ function DateRangePicker({
           {value?.from ? (
             value.to ? (
               <>
-                {format(value.from, "LLL dd, y")} – {format(value.to, "LLL dd, y")}
+                {format(value.from, "d LLL y", { locale: ru })} – {format(value.to, "d LLL y", { locale: ru })}
               </>
             ) : (
-              format(value.from, "LLL dd, y")
+              format(value.from, "d LLL y", { locale: ru })
             )
           ) : (
             <span>{placeholder}</span>
@@ -53,6 +57,7 @@ function DateRangePicker({
           selected={value}
           onSelect={onChange}
           numberOfMonths={2}
+          {...calendarProps}
         />
       </PopoverContent>
     </Popover>
