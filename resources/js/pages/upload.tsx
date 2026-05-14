@@ -7,7 +7,7 @@ import type {FileRejection} from 'react-dropzone';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { cn } from '@/lib/utils';
+import { cn, formatBytes } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import * as uploadRoute from '@/routes/upload';
 
@@ -37,21 +37,6 @@ interface QueueItem {
     error?: string;
 }
 
-function formatBytes(bytes: number): string {
-    if (bytes >= 1024 * 1024 * 1024) {
-return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-}
-
-    if (bytes >= 1024 * 1024) {
-return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-    if (bytes >= 1024) {
-return `${(bytes / 1024).toFixed(1)} KB`;
-}
-
-    return `${bytes} B`;
-}
 
 export default function UploadPage() {
     const [queue, setQueueState] = useState<QueueItem[]>([]);

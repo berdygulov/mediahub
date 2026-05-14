@@ -13,6 +13,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { formatBytes } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import * as filesRoute from '@/routes/files';
 
@@ -43,21 +44,6 @@ interface Props {
     downloadUrl: string;
 }
 
-function formatBytes(bytes: number): string {
-    if (bytes < 1024) {
-        return `${bytes} B`;
-    }
-
-    if (bytes < 1024 * 1024) {
-        return `${(bytes / 1024).toFixed(1)} KB`;
-    }
-
-    if (bytes < 1024 * 1024 * 1024) {
-        return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-    }
-
-    return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
-}
 
 function formatTime(seconds: number): string {
     const m = Math.floor(seconds / 60);

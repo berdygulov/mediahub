@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import { cn, formatBytes } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import * as filesRoute from '@/routes/files';
 import * as uploadRoute from '@/routes/upload';
@@ -199,21 +199,6 @@ function FolderNodeItem({
     );
 }
 
-function formatBytes(bytes: number): string {
-    if (bytes < 1024) {
-        return `${bytes} B`;
-    }
-
-    if (bytes < 1024 * 1024) {
-        return `${(bytes / 1024).toFixed(1)} KB`;
-    }
-
-    if (bytes < 1024 * 1024 * 1024) {
-        return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-    }
-
-    return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
-}
 
 function decodePaginationLabel(label: string): string {
     return label.replace('&laquo;', '«').replace('&raquo;', '»');
