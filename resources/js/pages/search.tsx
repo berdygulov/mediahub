@@ -98,7 +98,7 @@ export default function SearchPage({ query, type, folders, files }: Props) {
             <div className="flex h-full flex-1 flex-col gap-6 p-4 lg:p-6">
 
                 {/* Search bar */}
-                <form onSubmit={handleSearch} className="flex items-center gap-2">
+                <form className="flex items-center gap-2">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                         <input
