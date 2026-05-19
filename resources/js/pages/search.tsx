@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ChevronRight, Film, Folder, Music, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { formatBytes } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -72,13 +72,21 @@ export default function SearchPage({ query, type, folders, files }: Props) {
     const [searchInput, setSearchInput] = useState(query);
     const hasQuery = query.length >= 2;
 
-    function handleSearch(e: React.FormEvent) {
-        e.preventDefault();
-        router.get(searchRoute.index().url, {
-            q: searchInput,
-            ...(type ? { type } : {}),
-        });
-    }
+    useEffect(() => {
+        if (searchInput.length < 3) {
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            router.get(
+                searchRoute.index().url,
+                { q: searchInput, ...(type ? { type } : {}) },
+                { preserveState: true, replace: true },
+            );
+        }, 400);
+
+        return () => clearTimeout(timer);
+    }, [searchInput]);
 
     function filterUrl(t?: SearchType) {
         return searchRoute.index({ query: { q: query, ...(t ? { type: t } : {}) } }).url;
@@ -97,7 +105,7 @@ export default function SearchPage({ query, type, folders, files }: Props) {
                             type="search"
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
-                            placeholder="Поиск файлов и папок..."
+                            placeholder="Введите минимум 3 символа для поиска..."
                             className="w-full rounded-md border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
                             autoFocus
                         />
