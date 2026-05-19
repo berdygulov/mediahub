@@ -20,15 +20,15 @@ export default function Profile({
 
     return (
         <>
-            <Head title="Profile settings" />
+            <Head title="Настройки профиля" />
 
-            <h1 className="sr-only">Profile settings</h1>
+            <h1 className="sr-only">Настройки профиля</h1>
 
             <div className="space-y-6">
                 <Heading
                     variant="small"
-                    title="Profile information"
-                    description="Update your name and email address"
+                    title="Информация профиля"
+                    description="Обновите имя и адрес электронной почты"
                 />
 
                 <Form
@@ -41,7 +41,7 @@ export default function Profile({
                     {({ processing, errors }) => (
                         <>
                             <div className="grid gap-2">
-                                <Label htmlFor="name">Name</Label>
+                                <Label htmlFor="name">Имя</Label>
 
                                 <Input
                                     id="name"
@@ -50,7 +50,7 @@ export default function Profile({
                                     name="name"
                                     required
                                     autoComplete="name"
-                                    placeholder="Full name"
+                                    placeholder="Полное имя"
                                 />
 
                                 <InputError
@@ -60,7 +60,7 @@ export default function Profile({
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
+                                <Label htmlFor="email">Адрес эл. почты</Label>
 
                                 <Input
                                     id="email"
@@ -70,7 +70,7 @@ export default function Profile({
                                     name="email"
                                     required
                                     autoComplete="username"
-                                    placeholder="Email address"
+                                    placeholder="Email"
                                 />
 
                                 <InputError
@@ -83,22 +83,20 @@ export default function Profile({
                                 auth.user.email_verified_at === null && (
                                     <div>
                                         <p className="-mt-4 text-sm text-muted-foreground">
-                                            Your email address is unverified.{' '}
+                                            Email не подтверждён.{' '}
                                             <Link
                                                 href={send()}
                                                 as="button"
                                                 className="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
                                             >
-                                                Click here to resend the
-                                                verification email.
+                                                Нажмите для повторной отправки письма.
                                             </Link>
                                         </p>
 
                                         {status ===
                                             'verification-link-sent' && (
                                             <div className="mt-2 text-sm font-medium text-green-600">
-                                                A new verification link has been
-                                                sent to your email address.
+                                                Новая ссылка отправлена на ваш email.
                                             </div>
                                         )}
                                     </div>
@@ -109,7 +107,7 @@ export default function Profile({
                                     disabled={processing}
                                     data-test="update-profile-button"
                                 >
-                                    Save
+                                    Сохранить
                                 </Button>
                             </div>
                         </>
@@ -125,7 +123,7 @@ export default function Profile({
 Profile.layout = {
     breadcrumbs: [
         {
-            title: 'Profile settings',
+            title: 'Настройки профиля',
             href: edit(),
         },
     ],

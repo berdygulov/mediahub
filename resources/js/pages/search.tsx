@@ -38,10 +38,10 @@ interface Props {
 }
 
 const FILTER_TABS = [
-    { label: 'All', value: undefined },
-    { label: 'Folders', value: 'folder' as SearchType, icon: Folder },
-    { label: 'Video', value: 'video' as SearchType, icon: Film },
-    { label: 'Audio', value: 'audio' as SearchType, icon: Music },
+    { label: 'Все', value: undefined },
+    { label: 'Папки', value: 'folder' as SearchType, icon: Folder },
+    { label: 'Видео', value: 'video' as SearchType, icon: Film },
+    { label: 'Аудио', value: 'audio' as SearchType, icon: Music },
 ] as const;
 
 function BreadcrumbPath({ path, emptyMessage }: { path: PathSegment[]; emptyMessage: string }) {
@@ -86,7 +86,7 @@ export default function SearchPage({ query, type, folders, files }: Props) {
 
     return (
         <>
-            <Head title={query ? `Search: ${query}` : 'Search'} />
+            <Head title={query ? `Поиск: ${query}` : 'Поиск'} />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 lg:p-6">
 
                 {/* Search bar */}
@@ -97,7 +97,7 @@ export default function SearchPage({ query, type, folders, files }: Props) {
                             type="search"
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
-                            placeholder="Search files and folders..."
+                            placeholder="Поиск файлов и папок..."
                             className="w-full rounded-md border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
                             autoFocus
                         />
@@ -127,16 +127,16 @@ export default function SearchPage({ query, type, folders, files }: Props) {
                         <div className="flex size-12 items-center justify-center rounded-full bg-muted">
                             <Search className="size-5 text-muted-foreground" />
                         </div>
-                        <p className="text-sm font-medium">Search for files and folders</p>
-                        <p className="text-xs text-muted-foreground">Enter at least 2 characters to search</p>
+                        <p className="text-sm font-medium">Поиск файлов и папок</p>
+                        <p className="text-xs text-muted-foreground">Введите не менее 2 символов</p>
                     </div>
                 ) : folders.length + files.length === 0 ? (
                     <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-sidebar-border/70 p-6 text-center dark:border-sidebar-border">
                         <div className="flex size-12 items-center justify-center rounded-full bg-muted">
                             <Search className="size-5 text-muted-foreground" />
                         </div>
-                        <p className="text-sm font-medium">No results for &quot;{query}&quot;</p>
-                        <p className="text-xs text-muted-foreground">Try a different search term or filter</p>
+                        <p className="text-sm font-medium">Ничего не найдено по запросу &quot;{query}&quot;</p>
+                        <p className="text-xs text-muted-foreground">Попробуйте другой запрос или фильтр</p>
                     </div>
                 ) : (
                     <div className="flex flex-col gap-6">
@@ -144,7 +144,7 @@ export default function SearchPage({ query, type, folders, files }: Props) {
                         {folders.length > 0 && (
                             <div className="flex flex-col gap-2">
                                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                    Folders · {folders.length}
+                                    Папки · {folders.length}
                                 </p>
                                 <div className="overflow-hidden rounded-xl border">
                                     <ul>
@@ -159,7 +159,7 @@ export default function SearchPage({ query, type, folders, files }: Props) {
                                                     </div>
                                                     <div className="min-w-0 flex-1">
                                                         <p className="truncate text-sm font-medium">{folder.name}</p>
-                                                        <BreadcrumbPath path={folder.path} emptyMessage="Root" />
+                                                        <BreadcrumbPath path={folder.path} emptyMessage="Корень" />
                                                     </div>
                                                     <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                                                 </Link>
@@ -174,7 +174,7 @@ export default function SearchPage({ query, type, folders, files }: Props) {
                         {files.length > 0 && (
                             <div className="flex flex-col gap-2">
                                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                    Files · {files.length}
+                                    Файлы · {files.length}
                                 </p>
                                 <div className="overflow-hidden rounded-xl border">
                                     <ul>
@@ -200,7 +200,7 @@ export default function SearchPage({ query, type, folders, files }: Props) {
                                                     <div className="min-w-0 flex-1">
                                                         <p className="truncate text-sm font-medium">{file.name}</p>
                                                         <div className="flex items-center gap-2">
-                                                            <BreadcrumbPath path={file.folder_path} emptyMessage="No folder" />
+                                                            <BreadcrumbPath path={file.folder_path} emptyMessage="Без папки" />
                                                             <span className="text-xs text-muted-foreground/50">·</span>
                                                             <span className="text-xs text-muted-foreground">{formatBytes(file.size)}</span>
                                                         </div>
@@ -222,7 +222,7 @@ export default function SearchPage({ query, type, folders, files }: Props) {
 
 SearchPage.layout = {
     breadcrumbs: [
-        { title: 'Dashboard', href: dashboard() },
-        { title: 'Search', href: searchRoute.index() },
+        { title: 'Главная', href: dashboard() },
+        { title: 'Поиск', href: searchRoute.index() },
     ],
 };

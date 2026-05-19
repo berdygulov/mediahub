@@ -25,37 +25,37 @@ import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
     {
-        title: 'Dashboard',
+        title: 'Главная',
         href: dashboard(),
         icon: LayoutGrid,
     },
     {
-        title: 'All Files',
+        title: 'Все файлы',
         href: filesIndex(),
         icon: HardDrive,
     },
     {
-        title: 'Videos',
+        title: 'Видео',
         href: filesIndex({ query: { type: 'video' } }),
         icon: Film,
     },
     {
-        title: 'Audio',
+        title: 'Аудио',
         href: filesIndex({ query: { type: 'audio' } }),
         icon: Music,
     },
     {
-        title: 'Folders',
+        title: 'Папки',
         href: foldersIndex(),
         icon: Folder,
     },
     {
-        title: 'Search',
+        title: 'Поиск',
         href: searchIndex(),
         icon: Search,
     },
     {
-        title: 'Upload',
+        title: 'Загрузка',
         href: uploadCreate(),
         icon: Upload,
     },
@@ -63,17 +63,17 @@ const mainNavItems: NavItem[] = [
 
 const adminNavItems: NavItem[] = [
     {
-        title: 'Users',
+        title: 'Пользователи',
         href: adminUsersIndex(),
         icon: Shield,
     },
     {
-        title: 'Logs',
+        title: 'Журнал',
         href: adminLogsIndex(),
         icon: ScrollText,
     },
     {
-        title: 'Settings',
+        title: 'Настройки',
         href: adminSettingsIndex(),
         icon: Settings,
     },
@@ -99,7 +99,7 @@ export function AppSidebar() {
 
             <SidebarContent>
                 <NavMain items={mainNavItems} />
-                {isAdmin && <NavMain items={adminNavItems} label="Admin" />}
+                {isAdmin && <NavMain items={adminNavItems} label="Администратор" />}
             </SidebarContent>
 
             <SidebarFooter>

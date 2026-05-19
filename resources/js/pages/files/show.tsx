@@ -226,7 +226,7 @@ function AudioPlayer({ streamUrl }: { streamUrl: string }) {
             }
 
             if (voiceLabelRef.current) {
-                voiceLabelRef.current.textContent = isVoice ? 'Voice detected' : 'No voice';
+                voiceLabelRef.current.textContent = isVoice ? 'Голос обнаружен' : 'Тишина';
                 voiceLabelRef.current.className = isVoice
                     ? 'text-xs font-medium text-green-500'
                     : 'text-xs font-medium text-muted-foreground';
@@ -453,7 +453,7 @@ function AudioPlayer({ streamUrl }: { streamUrl: string }) {
             <div ref={waveContainerRef} className="relative rounded-lg bg-muted/50 p-4">
                 {isLoading && (
                     <div className="absolute inset-0 z-10 flex animate-pulse items-center justify-center rounded-lg bg-muted/80">
-                        <span className="text-muted-foreground text-sm">Loading…</span>
+                        <span className="text-muted-foreground text-sm">Загрузка…</span>
                     </div>
                 )}
                 <canvas
@@ -468,7 +468,7 @@ function AudioPlayer({ streamUrl }: { streamUrl: string }) {
             <div className="rounded-lg bg-muted/50 p-4">
                 <div className="mb-2 flex items-center justify-between">
                     <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                        Frequency Spectrum
+                        Частотный спектр
                     </p>
                     <span className="flex items-center gap-1.5">
                         <span
@@ -479,7 +479,7 @@ function AudioPlayer({ streamUrl }: { streamUrl: string }) {
                             ref={voiceLabelRef}
                             className="text-muted-foreground text-xs font-medium"
                         >
-                            No voice
+                            Тишина
                         </span>
                     </span>
                 </div>
@@ -562,7 +562,7 @@ export default function FilesShow({ file, streamUrl, downloadUrl }: Props) {
                     className="text-muted-foreground hover:text-foreground flex w-fit items-center gap-1.5 text-sm"
                 >
                     <ArrowLeft className="size-3.5" />
-                    Back to files
+                    Назад к файлам
                 </Link>
 
                 <div className="border-sidebar-border/70 dark:border-sidebar-border grid grid-cols-2 gap-4 rounded-xl border p-6">
@@ -578,16 +578,16 @@ export default function FilesShow({ file, streamUrl, downloadUrl }: Props) {
                             <div className="flex flex-col gap-1">
                                 <h1 className="text-lg font-semibold">{file.name}</h1>
                                 <p className="text-muted-foreground text-sm">
-                                    {file.type === 'video' ? 'Video' : 'Audio'} ·{' '}
+                                    {file.type === 'video' ? 'Видео' : 'Аудио'} ·{' '}
                                     {formatBytes(file.size)} · {file.mime_type}
                                 </p>
                                 <p className="text-muted-foreground text-xs">
-                                    Uploaded:{' '}
-                                    {format(parseISO(file.created_at), 'MMM d, yyyy HH:mm')}
+                                    Загружен:{' '}
+                                    {format(parseISO(file.created_at), 'dd.MM.yyyy HH:mm')}
                                     {file.folder && (
                                         <>
                                             <br />
-                                            Folder: {file.folder.name}
+                                            Папка: {file.folder.name}
                                         </>
                                     )}
                                 </p>
@@ -600,14 +600,14 @@ export default function FilesShow({ file, streamUrl, downloadUrl }: Props) {
                                     className="hover:bg-muted flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm"
                                 >
                                     <Download className="size-3.5" />
-                                    Download
+                                    Скачать
                                 </a>
                                 <button
                                     onClick={() => setShowDeleteDialog(true)}
                                     className="border-destructive/30 text-destructive hover:bg-destructive/10 flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm"
                                 >
                                     <Trash2 className="size-3.5" />
-                                    Delete
+                                    Удалить
                                 </button>
                             </div>
                         </div>
@@ -621,11 +621,11 @@ export default function FilesShow({ file, streamUrl, downloadUrl }: Props) {
             >
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete file</DialogTitle>
+                        <DialogTitle>Удалить файл</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete{' '}
-                            <span className="text-foreground font-medium">{file.name}</span>? This
-                            action cannot be undone.
+                            Вы уверены, что хотите удалить{' '}
+                            <span className="text-foreground font-medium">{file.name}</span>? Это
+                            действие нельзя отменить.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -634,10 +634,10 @@ export default function FilesShow({ file, streamUrl, downloadUrl }: Props) {
                             onClick={() => setShowDeleteDialog(false)}
                             disabled={isDeleting}
                         >
-                            Cancel
+                            Отмена
                         </Button>
                         <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-                            {isDeleting ? 'Deleting…' : 'Delete'}
+                            {isDeleting ? 'Удаление…' : 'Удалить'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -648,8 +648,8 @@ export default function FilesShow({ file, streamUrl, downloadUrl }: Props) {
 
 FilesShow.layout = {
     breadcrumbs: [
-        { title: 'Dashboard', href: dashboard() },
-        { title: 'Files', href: filesRoute.index() },
-        { title: 'View file', href: '#' },
+        { title: 'Главная', href: dashboard() },
+        { title: 'Файлы', href: filesRoute.index() },
+        { title: 'Просмотр файла', href: '#' },
     ],
 };

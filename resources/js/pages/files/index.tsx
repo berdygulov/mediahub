@@ -391,7 +391,7 @@ export default function FilesIndex({ files, filters }: Props) {
                     className="flex cursor-pointer items-center hover:text-foreground"
                     onClick={() => handleSort('name')}
                 >
-                    Name <SortIcon column="name" sort={filters.sort} order={filters.order} />
+                    Название <SortIcon column="name" sort={filters.sort} order={filters.order} />
                 </button>
             ),
             cell: ({ row }) => (
@@ -412,7 +412,7 @@ export default function FilesIndex({ files, filters }: Props) {
                     className="flex cursor-pointer items-center hover:text-foreground"
                     onClick={() => handleSort('mime_type')}
                 >
-                    Type <SortIcon column="mime_type" sort={filters.sort} order={filters.order} />
+                    Тип <SortIcon column="mime_type" sort={filters.sort} order={filters.order} />
                 </button>
             ),
             cell: ({ row }) => (
@@ -426,7 +426,7 @@ export default function FilesIndex({ files, filters }: Props) {
                     className="flex cursor-pointer items-center hover:text-foreground"
                     onClick={() => handleSort('size')}
                 >
-                    Size <SortIcon column="size" sort={filters.sort} order={filters.order} />
+                    Размер <SortIcon column="size" sort={filters.sort} order={filters.order} />
                 </button>
             ),
             cell: ({ row }) => (
@@ -435,7 +435,7 @@ export default function FilesIndex({ files, filters }: Props) {
         },
         {
             id: 'folder',
-            header: 'Folder',
+            header: 'Папка',
             cell: ({ row }) =>
                 row.original.folder ? (
                     <span className="text-muted-foreground text-sm">{row.original.folder.name}</span>
@@ -447,7 +447,7 @@ export default function FilesIndex({ files, filters }: Props) {
             ? [
                   {
                       id: 'owner',
-                      header: 'Owner',
+                      header: 'Владелец',
                       cell: ({ row }: { row: { original: FileRecord } }) => (
                           <span className="text-muted-foreground text-sm">{row.original.user.name}</span>
                       ),
@@ -461,12 +461,12 @@ export default function FilesIndex({ files, filters }: Props) {
                     className="flex cursor-pointer items-center hover:text-foreground"
                     onClick={() => handleSort('created_at')}
                 >
-                    Uploaded <SortIcon column="created_at" sort={filters.sort} order={filters.order} />
+                    Загружен <SortIcon column="created_at" sort={filters.sort} order={filters.order} />
                 </button>
             ),
             cell: ({ row }) => (
                 <span className="text-muted-foreground whitespace-nowrap text-sm">
-                    {format(parseISO(row.original.created_at), 'MMM d, yyyy HH:mm')}
+                    {format(parseISO(row.original.created_at), 'dd.MM.yyyy HH:mm')}
                 </span>
             ),
         },
@@ -476,12 +476,12 @@ export default function FilesIndex({ files, filters }: Props) {
             cell: ({ row }) => (
                 <div className="flex items-center justify-end gap-1">
                     <Link href={filesRoute.show(row.original.id).url}>
-                        <Button variant="ghost" size="icon" className="size-7" title="View">
+                        <Button variant="ghost" size="icon" className="size-7" title="Просмотр">
                             <Eye className="size-3.5" />
                         </Button>
                     </Link>
                     <a href={filesRoute.download(row.original.id).url}>
-                        <Button variant="ghost" size="icon" className="size-7" title="Download">
+                        <Button variant="ghost" size="icon" className="size-7" title="Скачать">
                             <Download className="size-3.5" />
                         </Button>
                     </a>
@@ -489,7 +489,7 @@ export default function FilesIndex({ files, filters }: Props) {
                         variant="ghost"
                         size="icon"
                         className="size-7"
-                        title="Move to folder"
+                        title="Переместить в папку"
                         onClick={() => setFileToMove(row.original)}
                     >
                         <FolderInput className="size-3.5" />
@@ -498,7 +498,7 @@ export default function FilesIndex({ files, filters }: Props) {
                         variant="ghost"
                         size="icon"
                         className="text-destructive hover:text-destructive size-7"
-                        title="Delete"
+                        title="Удалить"
                         onClick={() => setFileToDelete(row.original)}
                     >
                         <Trash2 className="size-3.5" />
@@ -519,14 +519,14 @@ export default function FilesIndex({ files, filters }: Props) {
 
     return (
         <>
-            <Head title="Files" />
+            <Head title="Файлы" />
 
             <div className="flex h-full flex-1 flex-col gap-4 p-4 lg:p-6">
                 {/* Toolbar */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
                         <Input
-                            placeholder="Search files…"
+                            placeholder="Поиск файлов…"
                             value={search}
                             onChange={(e) => handleSearchChange(e.target.value)}
                             className="h-8 w-52"
@@ -536,17 +536,17 @@ export default function FilesIndex({ files, filters }: Props) {
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All types</SelectItem>
+                                <SelectItem value="all">Все типы</SelectItem>
                                 <SelectItem value="video">
                                     <span className="flex items-center gap-1.5">
                                         <Film className="size-3.5 text-blue-500" />
-                                        Video
+                                        Видео
                                     </span>
                                 </SelectItem>
                                 <SelectItem value="audio">
                                     <span className="flex items-center gap-1.5">
                                         <Music className="size-3.5 text-purple-500" />
-                                        Audio
+                                        Аудио
                                     </span>
                                 </SelectItem>
                             </SelectContent>
@@ -555,7 +555,7 @@ export default function FilesIndex({ files, filters }: Props) {
                             value={dateRange}
                             onChange={handleDateRangeChange}
                             className="h-8 text-sm"
-                            placeholder="Date range"
+                            placeholder="Период"
                         />
                         {hasActiveFilters && (
                             <Button
@@ -564,14 +564,14 @@ export default function FilesIndex({ files, filters }: Props) {
                                 className="text-muted-foreground h-8 px-2 text-xs"
                                 onClick={clearFilters}
                             >
-                                Clear filters
+                                Сбросить фильтры
                             </Button>
                         )}
                     </div>
                     <Link href={uploadRoute.create.url()}>
                         <Button size="sm" className="h-8 gap-1.5">
                             <Upload className="size-3.5" />
-                            Upload
+                            Загрузить
                         </Button>
                     </Link>
                 </div>
@@ -583,18 +583,18 @@ export default function FilesIndex({ files, filters }: Props) {
                             <div className="bg-muted flex size-12 items-center justify-center rounded-full">
                                 <Film className="text-muted-foreground size-5" />
                             </div>
-                            <p className="text-sm font-medium">No files found</p>
+                            <p className="text-sm font-medium">Файлы не найдены</p>
                             <p className="text-muted-foreground text-xs">
                                 {hasActiveFilters
-                                    ? 'Try adjusting your filters'
-                                    : 'Upload your first file to get started'}
+                                    ? 'Попробуйте изменить фильтры'
+                                    : 'Загрузите первый файл чтобы начать'}
                             </p>
                             {!hasActiveFilters && (
                                 <Link
                                     href={uploadRoute.create.url()}
                                     className="text-primary text-xs underline underline-offset-4"
                                 >
-                                    Upload a file
+                                    Загрузить файл
                                 </Link>
                             )}
                         </div>
@@ -643,7 +643,7 @@ export default function FilesIndex({ files, filters }: Props) {
                 {files.last_page > 1 && (
                     <div className="text-muted-foreground flex items-center justify-between text-sm">
                         <span>
-                            {files.from}–{files.to} of {files.total} files
+                            {files.from}–{files.to} из {files.total} файлов
                         </span>
                         <div className="flex items-center gap-1">
                             {files.links.map((link, i) =>
@@ -678,11 +678,11 @@ export default function FilesIndex({ files, filters }: Props) {
             <Dialog open={!!fileToDelete} onOpenChange={(open) => !open && setFileToDelete(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete file</DialogTitle>
+                        <DialogTitle>Удалить файл</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete{' '}
+                            Вы уверены, что хотите удалить{' '}
                             <span className="text-foreground font-medium">{fileToDelete?.name}</span>?
-                            This action cannot be undone.
+                            Это действие необратимо.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -691,10 +691,10 @@ export default function FilesIndex({ files, filters }: Props) {
                             onClick={() => setFileToDelete(null)}
                             disabled={isDeleting}
                         >
-                            Cancel
+                            Отмена
                         </Button>
                         <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-                            {isDeleting ? 'Deleting…' : 'Delete'}
+                            {isDeleting ? 'Удаление…' : 'Удалить'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -704,9 +704,9 @@ export default function FilesIndex({ files, filters }: Props) {
             <Dialog open={!!fileToMove} onOpenChange={(open) => !open && setFileToMove(null)}>
                 <DialogContent className="max-w-sm">
                     <DialogHeader>
-                        <DialogTitle>Move to folder</DialogTitle>
+                        <DialogTitle>Переместить в папку</DialogTitle>
                         <DialogDescription>
-                            Select a folder for{' '}
+                            Выберите папку для{' '}
                             <span className="text-foreground font-medium">{fileToMove?.name}</span>.
                         </DialogDescription>
                     </DialogHeader>
@@ -722,7 +722,7 @@ export default function FilesIndex({ files, filters }: Props) {
                             onClick={() => setSelectedFolderId(null)}
                         >
                             <Folder className="size-3.5 shrink-0 text-muted-foreground" />
-                            No folder
+                            Без папки
                         </button>
 
                         <div className="my-1 border-t" />
@@ -737,7 +737,7 @@ export default function FilesIndex({ files, filters }: Props) {
                                 </div>
                             ) : folderTree.length === 0 ? (
                                 <p className="text-muted-foreground px-2 py-3 text-center text-sm">
-                                    No folders yet
+                                    Папок пока нет
                                 </p>
                             ) : (
                                 folderTree.map((node) => (
@@ -759,10 +759,10 @@ export default function FilesIndex({ files, filters }: Props) {
                             onClick={() => setFileToMove(null)}
                             disabled={isMoving}
                         >
-                            Cancel
+                            Отмена
                         </Button>
                         <Button onClick={handleMoveFolder} disabled={isMoving || isMoveUnchanged}>
-                            {isMoving ? 'Moving…' : 'Move'}
+                            {isMoving ? 'Перемещение…' : 'Переместить'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -773,7 +773,7 @@ export default function FilesIndex({ files, filters }: Props) {
 
 FilesIndex.layout = {
     breadcrumbs: [
-        { title: 'Dashboard', href: dashboard() },
-        { title: 'Files', href: filesRoute.index() },
+        { title: 'Главная', href: dashboard() },
+        { title: 'Файлы', href: filesRoute.index() },
     ],
 };

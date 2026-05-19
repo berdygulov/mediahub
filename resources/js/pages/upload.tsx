@@ -76,7 +76,7 @@ return;
             },
             onSuccess: () => {
                 uploadingRef.current = null;
-                toast.success(`${next.name} uploaded`);
+                toast.success(`${next.name} загружен`);
                 setQueue(queueRef.current.map((q) => (q.id === next.id ? { ...q, status: 'done' as const, progress: 100 } : q)));
                 startNextRef.current();
             },
@@ -95,7 +95,7 @@ return;
     const onDrop = (accepted: File[], rejected: FileRejection[]) => {
         rejected.forEach(({ file, errors }) => {
             const msg =
-                errors[0]?.code === 'file-too-large' ? `${file.name} exceeds 500 MB` : `${file.name}: unsupported format`;
+                errors[0]?.code === 'file-too-large' ? `${file.name} превышает 500 МБ` : `${file.name}: неподдерживаемый формат`;
             toast.error(msg);
         });
 
@@ -128,7 +128,7 @@ return;
 
     return (
         <>
-            <Head title="Upload" />
+            <Head title="Загрузка" />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 lg:p-6">
                 {/* Drop zone */}
                 <div
@@ -152,8 +152,8 @@ return;
                         />
                     </div>
                     <div className="flex flex-col gap-1">
-                        <p className="text-sm font-medium">{isDragActive ? 'Drop files here' : 'Drag and drop files here'}</p>
-                        <p className="text-xs text-muted-foreground">or click to browse · MP4, MKV, AVI, MP3, WAV, FLAC · max 500 MB</p>
+                        <p className="text-sm font-medium">{isDragActive ? 'Отпустите файлы' : 'Перетащите файлы сюда'}</p>
+                        <p className="text-xs text-muted-foreground">или нажмите для выбора · MP4, MKV, AVI, MP3, WAV, FLAC · макс 500 МБ</p>
                     </div>
                 </div>
 
@@ -161,14 +161,14 @@ return;
                 {queue.length > 0 && (
                     <div className="flex flex-col gap-3">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-sm font-medium">Queue ({queue.length})</h2>
+                            <h2 className="text-sm font-medium">Очередь ({queue.length})</h2>
                             {completedCount > 0 && (
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => setQueue(queueRef.current.filter((q) => q.status !== 'done' && q.status !== 'error'))}
                                 >
-                                    Clear completed ({completedCount})
+                                    Очистить завершённые ({completedCount})
                                 </Button>
                             )}
                         </div>
@@ -237,7 +237,7 @@ return;
 
 UploadPage.layout = {
     breadcrumbs: [
-        { title: 'Dashboard', href: dashboard() },
-        { title: 'Upload', href: uploadRoute.create() },
+        { title: 'Главная', href: dashboard() },
+        { title: 'Загрузка', href: uploadRoute.create() },
     ],
 };

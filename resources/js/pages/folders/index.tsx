@@ -26,15 +26,23 @@ interface Props {
     folders: FolderItem[];
 }
 
+function ruPlural(n: number, one: string, few: string, many: string): string {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return `${n} ${one}`;
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} ${few}`;
+    return `${n} ${many}`;
+}
+
 function folderMeta(folder: FolderItem): string {
     const parts: string[] = [];
     if (folder.children_count > 0) {
-        parts.push(`${folder.children_count} ${folder.children_count === 1 ? 'subfolder' : 'subfolders'}`);
+        parts.push(ruPlural(folder.children_count, 'подпапка', 'подпапки', 'подпапок'));
     }
     if (folder.files_count > 0) {
-        parts.push(`${folder.files_count} ${folder.files_count === 1 ? 'file' : 'files'}`);
+        parts.push(ruPlural(folder.files_count, 'файл', 'файла', 'файлов'));
     }
-    return parts.join(' · ') || 'Empty';
+    return parts.join(' · ') || 'Пустая';
 }
 
 export default function FoldersIndex({ folders }: Props) {
@@ -58,16 +66,16 @@ export default function FoldersIndex({ folders }: Props) {
 
     return (
         <>
-            <Head title="Folders" />
+            <Head title="Папки" />
 
             <div className="flex h-full flex-1 flex-col gap-4 p-4 lg:p-6">
                 <div className="flex items-center justify-between">
                     <p className="text-sm text-muted-foreground">
-                        {folders.length} {folders.length === 1 ? 'folder' : 'folders'}
+                        {ruPlural(folders.length, 'папка', 'папки', 'папок')}
                     </p>
                     <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
                         <FolderPlus className="size-3.5" />
-                        New folder
+                        Новая папка
                     </Button>
                 </div>
 
@@ -77,15 +85,15 @@ export default function FoldersIndex({ folders }: Props) {
                             <div className="flex size-12 items-center justify-center rounded-full bg-muted">
                                 <Folder className="size-5 text-muted-foreground" />
                             </div>
-                            <p className="text-sm font-medium">No folders yet</p>
+                            <p className="text-sm font-medium">Папок пока нет</p>
                             <p className="text-xs text-muted-foreground">
-                                Create a folder to organise your media files
+                                Создайте папку для организации медиафайлов
                             </p>
                             <button
                                 className="mt-1 text-xs text-primary underline underline-offset-4 hover:text-primary/80"
                                 onClick={openCreate}
                             >
-                                Create a folder
+                                Создать папку
                             </button>
                         </div>
                     ) : (
@@ -116,14 +124,14 @@ export default function FoldersIndex({ folders }: Props) {
             <Dialog open={showCreate} onOpenChange={(open) => { if (!open) reset(); setShowCreate(open); }}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>New folder</DialogTitle>
+                        <DialogTitle>Новая папка</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleCreate} className="space-y-4">
                         <div className="space-y-1.5">
-                            <Label htmlFor="folder-name">Folder name</Label>
+                            <Label htmlFor="folder-name">Название папки</Label>
                             <Input
                                 id="folder-name"
-                                placeholder="e.g. Videos"
+                                placeholder="напр. Видео"
                                 value={data.name}
                                 onChange={(e) => setData('name', e.target.value)}
                                 autoFocus
@@ -139,10 +147,10 @@ export default function FoldersIndex({ folders }: Props) {
                                 onClick={() => setShowCreate(false)}
                                 disabled={processing}
                             >
-                                Cancel
+                                Отмена
                             </Button>
                             <Button type="submit" disabled={processing}>
-                                {processing ? 'Creating…' : 'Create'}
+                                {processing ? 'Создание…' : 'Создать'}
                             </Button>
                         </DialogFooter>
                     </form>
@@ -154,7 +162,7 @@ export default function FoldersIndex({ folders }: Props) {
 
 FoldersIndex.layout = {
     breadcrumbs: [
-        { title: 'Dashboard', href: dashboard() },
-        { title: 'Folders', href: foldersRoute.index() },
+        { title: 'Главная', href: dashboard() },
+        { title: 'Папки', href: foldersRoute.index() },
     ],
 };

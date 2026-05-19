@@ -11,7 +11,7 @@ export default function Welcome({
 
     return (
         <>
-            <Head title="MediaHub — Your Media Library" />
+            <Head title="MediaHub — Ваша медиатека" />
             <div className="flex min-h-screen flex-col bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
                 <header className="flex items-center justify-between px-6 py-4 lg:px-12">
                     <div className="flex items-center gap-2">
@@ -26,7 +26,7 @@ export default function Welcome({
                                 href={dashboard()}
                                 className="inline-block rounded-md border border-[#19140035] px-5 py-1.5 text-sm hover:border-[#1915014a] dark:border-[#3E3E3A] dark:hover:border-[#62605b]"
                             >
-                                Dashboard
+                                Личный кабинет
                             </Link>
                         ) : (
                             <>
@@ -34,14 +34,14 @@ export default function Welcome({
                                     href={login()}
                                     className="inline-block px-5 py-1.5 text-sm text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]"
                                 >
-                                    Log in
+                                    Войти
                                 </Link>
                                 {canRegister && (
                                     <Link
                                         href={register()}
                                         className="inline-block rounded-md border border-[#19140035] bg-[#1b1b18] px-5 py-1.5 text-sm text-white hover:bg-black dark:border-[#3E3E3A] dark:bg-[#EDEDEC] dark:text-[#1b1b18] dark:hover:bg-white"
                                     >
-                                        Get started
+                                        Начать
                                     </Link>
                                 )}
                             </>
@@ -51,11 +51,11 @@ export default function Welcome({
 
                 <main className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center lg:px-12">
                     <h1 className="mb-4 text-5xl font-bold tracking-tight lg:text-6xl">
-                        Your media,{' '}
-                        <span className="text-[#706f6c] dark:text-[#A1A09A]">organised.</span>
+                        Ваши медиафайлы —{' '}
+                        <span className="text-[#706f6c] dark:text-[#A1A09A]">в порядке.</span>
                     </h1>
                     <p className="mb-10 max-w-xl text-lg text-[#706f6c] dark:text-[#A1A09A]">
-                        Upload, manage, and share your videos, images, and documents in one place.
+                        Загружайте, управляйте и делитесь видео и аудио в одном месте.
                     </p>
                     <div className="flex gap-3">
                         {auth.user ? (
@@ -63,7 +63,7 @@ export default function Welcome({
                                 href={dashboard()}
                                 className="inline-block rounded-md bg-[#1b1b18] px-6 py-2.5 text-sm font-medium text-white hover:bg-black dark:bg-[#EDEDEC] dark:text-[#1b1b18] dark:hover:bg-white"
                             >
-                                Go to Dashboard
+                                Перейти в кабинет
                             </Link>
                         ) : (
                             <>
@@ -72,14 +72,14 @@ export default function Welcome({
                                         href={register()}
                                         className="inline-block rounded-md bg-[#1b1b18] px-6 py-2.5 text-sm font-medium text-white hover:bg-black dark:bg-[#EDEDEC] dark:text-[#1b1b18] dark:hover:bg-white"
                                     >
-                                        Get started free
+                                        Начать бесплатно
                                     </Link>
                                 )}
                                 <Link
                                     href={login()}
                                     className="inline-block rounded-md border border-[#19140035] px-6 py-2.5 text-sm font-medium hover:border-[#1915014a] dark:border-[#3E3E3A] dark:hover:border-[#62605b]"
                                 >
-                                    Log in
+                                    Войти
                                 </Link>
                             </>
                         )}
@@ -92,36 +92,36 @@ export default function Welcome({
                             <div className="flex size-10 items-center justify-center rounded-full bg-[#f4f4f0] dark:bg-[#1D1D1A]">
                                 <Upload className="size-5 text-[#706f6c] dark:text-[#A1A09A]" />
                             </div>
-                            <h3 className="text-sm font-medium">Upload</h3>
+                            <h3 className="text-sm font-medium">Загрузка</h3>
                             <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                                Drag and drop any file type with ease
+                                Перетащите любой файл с лёгкостью
                             </p>
                         </div>
                         <div className="flex flex-col items-center gap-3 text-center">
                             <div className="flex size-10 items-center justify-center rounded-full bg-[#f4f4f0] dark:bg-[#1D1D1A]">
                                 <Film className="size-5 text-[#706f6c] dark:text-[#A1A09A]" />
                             </div>
-                            <h3 className="text-sm font-medium">Videos</h3>
+                            <h3 className="text-sm font-medium">Видео</h3>
                             <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                                Stream and manage your video library
+                                Управляйте своей видеотекой
                             </p>
                         </div>
                         <div className="flex flex-col items-center gap-3 text-center">
                             <div className="flex size-10 items-center justify-center rounded-full bg-[#f4f4f0] dark:bg-[#1D1D1A]">
                                 <Image className="size-5 text-[#706f6c] dark:text-[#A1A09A]" />
                             </div>
-                            <h3 className="text-sm font-medium">Images</h3>
+                            <h3 className="text-sm font-medium">Изображения</h3>
                             <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                                Browse your photos and graphics
+                                Просматривайте фото и графику
                             </p>
                         </div>
                         <div className="flex flex-col items-center gap-3 text-center">
                             <div className="flex size-10 items-center justify-center rounded-full bg-[#f4f4f0] dark:bg-[#1D1D1A]">
                                 <Share2 className="size-5 text-[#706f6c] dark:text-[#A1A09A]" />
                             </div>
-                            <h3 className="text-sm font-medium">Share</h3>
+                            <h3 className="text-sm font-medium">Поделиться</h3>
                             <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                                Share files with a simple link
+                                Делитесь файлами по простой ссылке
                             </p>
                         </div>
                     </div>
