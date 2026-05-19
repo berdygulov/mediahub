@@ -1,5 +1,16 @@
-import { Head, Link, useForm } from '@inertiajs/react';
-import { ChevronRight, Folder, FolderPlus } from 'lucide-react';
+import {
+    ColumnDef,
+    ColumnFiltersState,
+    SortingState,
+    flexRender,
+    getCoreRowModel,
+    getFilteredRowModel,
+    getSortedRowModel,
+    useReactTable,
+} from '@tanstack/react-table';
+import { Head, router, useForm } from '@inertiajs/react';
+import { format, parseISO } from 'date-fns';
+import { ArrowDown, ArrowUp, ArrowUpDown, Folder, FolderPlus } from 'lucide-react';
 import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -20,6 +31,7 @@ interface FolderItem {
     name: string;
     children_count: number;
     files_count: number;
+    created_at: string;
 }
 
 interface Props {
@@ -45,9 +57,70 @@ function folderMeta(folder: FolderItem): string {
     return parts.join(' · ') || 'Пустая';
 }
 
+function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
+    if (!sorted) return <ArrowUpDown className="ml-1 inline size-3 opacity-40" />;
+    return sorted === 'asc'
+        ? <ArrowUp className="ml-1 inline size-3" />
+        : <ArrowDown className="ml-1 inline size-3" />;
+}
+
 export default function FoldersIndex({ folders }: Props) {
     const [showCreate, setShowCreate] = React.useState(false);
     const { data, setData, post, processing, errors, reset } = useForm({ name: '' });
+
+    const [sorting, setSorting] = React.useState<SortingState>([]);
+    const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+
+    const columns = React.useMemo<ColumnDef<FolderItem>[]>(
+        () => [
+            {
+                accessorKey: 'name',
+                header: 'Название',
+                filterFn: 'includesString',
+                cell: ({ row }) => (
+                    <div className="flex items-center gap-2">
+                        <Folder className="size-4 shrink-0 text-amber-500" />
+                        <span className="max-w-[300px] truncate font-medium">{row.original.name}</span>
+                    </div>
+                ),
+            },
+            {
+                accessorKey: 'created_at',
+                header: ({ column }) => (
+                    <button
+                        className="flex cursor-pointer items-center hover:text-foreground"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    >
+                        Дата создания <SortIcon sorted={column.getIsSorted()} />
+                    </button>
+                ),
+                cell: ({ getValue }) => (
+                    <span className="whitespace-nowrap text-sm text-muted-foreground">
+                        {format(parseISO(getValue() as string), 'dd.MM.yyyy HH:mm')}
+                    </span>
+                ),
+            },
+            {
+                id: 'meta',
+                header: 'Содержимое',
+                cell: ({ row }) => (
+                    <span className="text-sm text-muted-foreground">{folderMeta(row.original)}</span>
+                ),
+            },
+        ],
+        [],
+    );
+
+    const table = useReactTable({
+        data: folders,
+        columns,
+        state: { sorting, columnFilters },
+        onSortingChange: setSorting,
+        onColumnFiltersChange: setColumnFilters,
+        getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+    });
 
     function handleCreate(e: React.FormEvent) {
         e.preventDefault();
@@ -69,16 +142,21 @@ export default function FoldersIndex({ folders }: Props) {
             <Head title="Папки" />
 
             <div className="flex h-full flex-1 flex-col gap-4 p-4 lg:p-6">
-                <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
-                        {ruPlural(folders.length, 'папка', 'папки', 'папок')}
-                    </p>
+                {/* Toolbar */}
+                <div className="flex items-center justify-between gap-3">
+                    <Input
+                        placeholder="Поиск папок…"
+                        value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
+                        onChange={(e) => table.getColumn('name')?.setFilterValue(e.target.value)}
+                        className="h-8 w-52"
+                    />
                     <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
                         <FolderPlus className="size-3.5" />
                         Новая папка
                     </Button>
                 </div>
 
+                {/* Table */}
                 <div className="overflow-hidden rounded-xl border">
                     {folders.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-3 p-12 text-center">
@@ -97,31 +175,66 @@ export default function FoldersIndex({ folders }: Props) {
                             </button>
                         </div>
                     ) : (
-                        <ul>
-                            {folders.map((folder, i) => (
-                                <li key={folder.id} className={i !== folders.length - 1 ? 'border-b' : ''}>
-                                    <Link
-                                        href={foldersRoute.show(folder.id).url}
-                                        className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30"
-                                        prefetch
-                                    >
-                                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
-                                            <Folder className="size-4 text-amber-600 dark:text-amber-400" />
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-medium">{folder.name}</p>
-                                            <p className="text-xs text-muted-foreground">{folderMeta(folder)}</p>
-                                        </div>
-                                        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
+                        <table className="w-full text-sm">
+                            <thead className="border-b bg-muted/50">
+                                {table.getHeaderGroups().map((headerGroup) => (
+                                    <tr key={headerGroup.id}>
+                                        {headerGroup.headers.map((header) => (
+                                            <th
+                                                key={header.id}
+                                                className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground"
+                                            >
+                                                {!header.isPlaceholder &&
+                                                    flexRender(
+                                                        header.column.columnDef.header,
+                                                        header.getContext(),
+                                                    )}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </thead>
+                            <tbody>
+                                {table.getRowModel().rows.length === 0 ? (
+                                    <tr>
+                                        <td
+                                            colSpan={columns.length}
+                                            className="px-4 py-10 text-center text-muted-foreground"
+                                        >
+                                            Ничего не найдено
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    table.getRowModel().rows.map((row) => (
+                                        <tr
+                                            key={row.id}
+                                            className="cursor-pointer border-b transition-colors last:border-0 hover:bg-muted/30"
+                                            onClick={() => router.visit(foldersRoute.show(row.original.id).url)}
+                                        >
+                                            {row.getVisibleCells().map((cell) => (
+                                                <td key={cell.id} className="px-4 py-3">
+                                                    {flexRender(
+                                                        cell.column.columnDef.cell,
+                                                        cell.getContext(),
+                                                    )}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     )}
                 </div>
             </div>
 
-            <Dialog open={showCreate} onOpenChange={(open) => { if (!open) reset(); setShowCreate(open); }}>
+            <Dialog
+                open={showCreate}
+                onOpenChange={(open) => {
+                    if (!open) reset();
+                    setShowCreate(open);
+                }}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Новая папка</DialogTitle>

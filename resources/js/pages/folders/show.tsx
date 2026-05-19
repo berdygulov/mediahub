@@ -206,8 +206,14 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
             },
             {
                 accessorKey: 'displayType',
-                header: 'Тип',
-                enableSorting: false,
+                header: ({ column }) => (
+                    <button
+                        className="flex cursor-pointer items-center hover:text-foreground"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    >
+                        Тип <SortIcon sorted={column.getIsSorted()} />
+                    </button>
+                ),
                 cell: ({ getValue }) => (
                     <span className="text-muted-foreground text-xs">{getValue() as string}</span>
                 ),
