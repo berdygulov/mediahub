@@ -36,7 +36,7 @@ function DateRangePicker({
             className
           )}
         >
-          <CalendarIcon className="mr-2 size-4 shrink-0" />
+          <CalendarIcon className="size-4 shrink-0" />
           {value?.from ? (
             value.to ? (
               <>

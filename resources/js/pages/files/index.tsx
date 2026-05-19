@@ -20,6 +20,7 @@ import * as React from 'react';
 import type { DateRange } from 'react-day-picker';
 
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import {
     Dialog,
@@ -37,7 +38,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn, formatBytes } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -116,6 +116,7 @@ function buildTree(folders: FlatFolder[]): FolderNode[] {
 
     for (const f of folders) {
         const node = map.get(f.id)!;
+
         if (f.parent_id === null) {
             roots.push(node);
         } else {
