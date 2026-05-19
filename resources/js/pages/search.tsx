@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ChevronRight, Film, Folder, Music, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import type React from 'react';
 
 import { formatBytes } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -37,12 +38,18 @@ interface Props {
     files: FileResult[];
 }
 
-const FILTER_TABS = [
+interface FilterTab {
+    label: string;
+    value: SearchType | undefined;
+    icon?: React.ComponentType<{ className?: string }>;
+}
+
+const FILTER_TABS: FilterTab[] = [
     { label: 'Все', value: undefined },
-    { label: 'Папки', value: 'folder' as SearchType, icon: Folder },
-    { label: 'Видео', value: 'video' as SearchType, icon: Film },
-    { label: 'Аудио', value: 'audio' as SearchType, icon: Music },
-] as const;
+    { label: 'Папки', value: 'folder', icon: Folder },
+    { label: 'Видео', value: 'video', icon: Film },
+    { label: 'Аудио', value: 'audio', icon: Music },
+];
 
 function BreadcrumbPath({ path, emptyMessage }: { path: PathSegment[]; emptyMessage: string }) {
     if (path.length === 0) {
