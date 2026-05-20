@@ -393,7 +393,7 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
 
             <div className="flex h-full flex-1 flex-col gap-4 p-4 lg:p-6">
                 {/* Folder header */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-3">
                         <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
                             <Folder className="size-5 text-amber-600 dark:text-amber-400" />
@@ -419,11 +419,11 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                             onClick={() => fileInputRef.current?.click()}
                         >
                             <Upload className="size-3.5" />
-                            Загрузить файлы
+                            <span className="hidden sm:inline">Загрузить файлы</span>
                         </Button>
                         <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
                             <FolderPlus className="size-3.5" />
-                            Новая подпапка
+                            <span className="hidden sm:inline">Новая подпапка</span>
                         </Button>
                     </div>
                 </div>
@@ -531,55 +531,97 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                             </button>
                         </div>
                     ) : (
-                        <table className="w-full text-sm">
-                            <thead className="bg-muted/50 border-b">
-                                {table.getHeaderGroups().map((headerGroup) => (
-                                    <tr key={headerGroup.id}>
-                                        {headerGroup.headers.map((header) => (
-                                            <th
-                                                key={header.id}
-                                                className="text-muted-foreground px-4 py-2.5 text-left text-xs font-medium"
-                                            >
-                                                {!header.isPlaceholder &&
-                                                    flexRender(
-                                                        header.column.columnDef.header,
-                                                        header.getContext(),
-                                                    )}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                ))}
-                            </thead>
-                            <tbody>
+                        <>
+                            {/* Mobile: card list */}
+                            <div className="divide-y md:hidden">
                                 {table.getRowModel().rows.length === 0 ? (
-                                    <tr>
-                                        <td
-                                            colSpan={table.getVisibleLeafColumns().length}
-                                            className="px-4 py-10 text-center text-muted-foreground"
-                                        >
-                                            Ничего не найдено
-                                        </td>
-                                    </tr>
+                                    <p className="px-4 py-10 text-center text-sm text-muted-foreground">
+                                        Ничего не найдено
+                                    </p>
                                 ) : (
-                                    table.getRowModel().rows.map((row) => (
-                                        <tr
-                                            key={row.id}
-                                            className="hover:bg-muted/30 border-b cursor-pointer transition-colors last:border-0"
-                                            onClick={() => router.visit(row.original.href)}
-                                        >
-                                            {row.getVisibleCells().map((cell) => (
-                                                <td key={cell.id} className="px-4 py-3">
-                                                    {flexRender(
-                                                        cell.column.columnDef.cell,
-                                                        cell.getContext(),
-                                                    )}
-                                                </td>
+                                    table.getRowModel().rows.map((row) => {
+                                        const item = row.original;
+                                        return (
+                                            <div
+                                                key={row.id}
+                                                className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30"
+                                                onClick={() => router.visit(item.href)}
+                                            >
+                                                {item.kind === 'folder' ? (
+                                                    <Folder className="size-4 shrink-0 text-amber-500" />
+                                                ) : item.media_type === 'video' ? (
+                                                    <Film className="size-4 shrink-0 text-blue-500" />
+                                                ) : (
+                                                    <Music className="size-4 shrink-0 text-purple-500" />
+                                                )}
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="truncate text-sm font-medium">{item.name}</p>
+                                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                                                        <span>{item.displayType}</span>
+                                                        {item.size !== null && <span>{formatBytes(item.size)}</span>}
+                                                        <span className="whitespace-nowrap">
+                                                            {format(parseISO(item.created_at), 'dd.MM.yyyy')}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                            {/* Desktop: table */}
+                            <div className="overflow-x-auto">
+                            <table className="hidden w-full text-sm md:table">
+                                <thead className="bg-muted/50 border-b">
+                                    {table.getHeaderGroups().map((headerGroup) => (
+                                        <tr key={headerGroup.id}>
+                                            {headerGroup.headers.map((header) => (
+                                                <th
+                                                    key={header.id}
+                                                    className="text-muted-foreground px-4 py-2.5 text-left text-xs font-medium"
+                                                >
+                                                    {!header.isPlaceholder &&
+                                                        flexRender(
+                                                            header.column.columnDef.header,
+                                                            header.getContext(),
+                                                        )}
+                                                </th>
                                             ))}
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                    ))}
+                                </thead>
+                                <tbody>
+                                    {table.getRowModel().rows.length === 0 ? (
+                                        <tr>
+                                            <td
+                                                colSpan={table.getVisibleLeafColumns().length}
+                                                className="px-4 py-10 text-center text-muted-foreground"
+                                            >
+                                                Ничего не найдено
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        table.getRowModel().rows.map((row) => (
+                                            <tr
+                                                key={row.id}
+                                                className="hover:bg-muted/30 border-b cursor-pointer transition-colors last:border-0"
+                                                onClick={() => router.visit(row.original.href)}
+                                            >
+                                                {row.getVisibleCells().map((cell) => (
+                                                    <td key={cell.id} className="px-4 py-3">
+                                                        {flexRender(
+                                                            cell.column.columnDef.cell,
+                                                            cell.getContext(),
+                                                        )}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                            </div>
+                        </>
                     )}
                 </div>
             </div>

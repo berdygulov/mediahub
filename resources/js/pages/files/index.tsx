@@ -611,53 +611,125 @@ export default function FilesIndex({ files, filters }: Props) {
                             )}
                         </div>
                     ) : (
-                        <table className="w-full text-sm">
-                            <thead className="bg-muted/50 border-b">
-                                {table.getHeaderGroups().map((headerGroup) => (
-                                    <tr key={headerGroup.id}>
-                                        {headerGroup.headers.map((header) => (
-                                            <th
-                                                key={header.id}
-                                                className="text-muted-foreground px-4 py-2.5 text-left text-xs font-medium"
-                                            >
-                                                {!header.isPlaceholder &&
-                                                    flexRender(
-                                                        header.column.columnDef.header,
-                                                        header.getContext(),
-                                                    )}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                ))}
-                            </thead>
-                            <tbody>
-                                {table.getRowModel().rows.map((row) => (
-                                    <tr
-                                        key={row.id}
-                                        className="hover:bg-muted/30 border-b transition-colors last:border-0"
-                                    >
-                                        {row.getVisibleCells().map((cell) => (
-                                            <td key={cell.id} className="px-4 py-3">
-                                                {flexRender(
-                                                    cell.column.columnDef.cell,
-                                                    cell.getContext(),
+                        <>
+                            {/* Mobile: card list */}
+                            <div className="divide-y md:hidden">
+                                {files.data.map((file) => (
+                                    <div key={file.id} className="flex flex-col gap-2 px-4 py-3">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex min-w-0 items-center gap-2">
+                                                {file.type === 'video' ? (
+                                                    <Film className="size-4 shrink-0 text-blue-500" />
+                                                ) : (
+                                                    <Music className="size-4 shrink-0 text-purple-500" />
                                                 )}
-                                            </td>
-                                        ))}
-                                    </tr>
+                                                <span className="truncate text-sm font-medium">{file.name}</span>
+                                            </div>
+                                            <div className="flex shrink-0 items-center gap-0.5">
+                                                <Link href={filesRoute.show(file.id).url}>
+                                                    <Button variant="ghost" size="icon" className="size-7" title="Просмотр">
+                                                        <Eye className="size-3.5" />
+                                                    </Button>
+                                                </Link>
+                                                <a href={filesRoute.download(file.id).url}>
+                                                    <Button variant="ghost" size="icon" className="size-7" title="Скачать">
+                                                        <Download className="size-3.5" />
+                                                    </Button>
+                                                </a>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-7"
+                                                    title="Переместить в папку"
+                                                    onClick={() => setFileToMove(file)}
+                                                >
+                                                    <FolderInput className="size-3.5" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="text-destructive hover:text-destructive size-7"
+                                                    title="Удалить"
+                                                    onClick={() => setFileToDelete(file)}
+                                                >
+                                                    <Trash2 className="size-3.5" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-6 text-xs text-muted-foreground">
+                                            <span>{file.mime_type}</span>
+                                            <span>{formatBytes(file.size)}</span>
+                                            {file.folder && (
+                                                <Link
+                                                    href={foldersRoute.show(file.folder.id).url}
+                                                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                                                    title={file.folder.path}
+                                                >
+                                                    <Folder className="size-3 shrink-0" />
+                                                    <span className="max-w-[160px] truncate">
+                                                        {file.folder.path.split(' / ').slice(-2).join(' / ')}
+                                                    </span>
+                                                </Link>
+                                            )}
+                                            {isAdmin && <span>{file.user.name}</span>}
+                                            <span className="whitespace-nowrap">
+                                                {format(parseISO(file.created_at), 'dd.MM.yyyy HH:mm')}
+                                            </span>
+                                        </div>
+                                    </div>
                                 ))}
-                            </tbody>
-                        </table>
+                            </div>
+                            {/* Desktop: table */}
+                            <div className="overflow-x-auto">
+                            <table className="hidden w-full text-sm md:table">
+                                <thead className="bg-muted/50 border-b">
+                                    {table.getHeaderGroups().map((headerGroup) => (
+                                        <tr key={headerGroup.id}>
+                                            {headerGroup.headers.map((header) => (
+                                                <th
+                                                    key={header.id}
+                                                    className="text-muted-foreground px-4 py-2.5 text-left text-xs font-medium"
+                                                >
+                                                    {!header.isPlaceholder &&
+                                                        flexRender(
+                                                            header.column.columnDef.header,
+                                                            header.getContext(),
+                                                        )}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </thead>
+                                <tbody>
+                                    {table.getRowModel().rows.map((row) => (
+                                        <tr
+                                            key={row.id}
+                                            className="hover:bg-muted/30 border-b transition-colors last:border-0"
+                                        >
+                                            {row.getVisibleCells().map((cell) => (
+                                                <td key={cell.id} className="px-4 py-3">
+                                                    {flexRender(
+                                                        cell.column.columnDef.cell,
+                                                        cell.getContext(),
+                                                    )}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            </div>
+                        </>
                     )}
                 </div>
 
                 {/* Pagination */}
                 {files.last_page > 1 && (
-                    <div className="text-muted-foreground flex items-center justify-between text-sm">
+                    <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-y-2 text-sm">
                         <span>
                             {files.from}–{files.to} из {files.total} файлов
                         </span>
-                        <div className="flex items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-1">
                             {files.links.map((link, i) =>
                                 link.url ? (
                                     <Link
