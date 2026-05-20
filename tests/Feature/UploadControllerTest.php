@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\File;
+use App\Models\Folder;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -138,5 +139,43 @@ class UploadControllerTest extends TestCase
 
         $this->assertDatabaseHas('files', ['user_id' => $userA->id]);
         $this->assertDatabaseMissing('files', ['user_id' => $userB->id]);
+    }
+
+    public function test_file_can_be_uploaded_into_a_folder(): void
+    {
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $folder = Folder::factory()->create(['user_id' => $user->id]);
+        $file = UploadedFile::fake()->create('video.mp4', 1024, 'video/mp4');
+
+        $response = $this->actingAs($user)->post(route('upload.store'), [
+            'file' => $file,
+            'folder_id' => $folder->id,
+        ]);
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseHas('files', [
+            'user_id' => $user->id,
+            'folder_id' => $folder->id,
+            'name' => 'video.mp4',
+        ]);
+    }
+
+    public function test_invalid_folder_id_is_rejected(): void
+    {
+        $user = User::factory()->create();
+        $file = UploadedFile::fake()->create('video.mp4', 1024, 'video/mp4');
+
+        $response = $this->actingAs($user)
+            ->withHeaders(['Accept' => 'application/json'])
+            ->post(route('upload.store'), [
+                'file' => $file,
+                'folder_id' => 99999,
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['folder_id']);
     }
 }

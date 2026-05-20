@@ -19,13 +19,21 @@ class UploadController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'file' => [
-                'required',
-                FileRule::types(['mp4', 'mkv', 'avi', 'mp3', 'wav', 'flac', 'ogg'])
-                    ->max('500mb'),
+        $request->validate(
+            [
+                'file' => [
+                    'required',
+                    FileRule::types(['mp4', 'mkv', 'avi', 'mp3', 'wav', 'flac', 'ogg'])
+                        ->max('500mb'),
+                ],
+                'folder_id' => ['nullable', 'integer', 'exists:folders,id'],
             ],
-        ]);
+            [
+                'file.required' => 'Файл обязателен.',
+                'file.Illuminate\Validation\Rules\File' => 'Файл должен быть одного из форматов: MP4, MKV, AVI, MP3, WAV, FLAC, OGG. Максимальный размер — 500 МБ.',
+                'folder_id.exists' => 'Указанная папка не существует.',
+            ],
+        );
 
         $uploaded = $request->file('file');
         $mimeType = $uploaded->getMimeType();
@@ -36,6 +44,7 @@ class UploadController extends Controller
 
         File::create([
             'user_id' => $request->user()->id,
+            'folder_id' => $request->input('folder_id'),
             'name' => $uploaded->getClientOriginalName(),
             'disk' => 'local',
             'path' => $path,

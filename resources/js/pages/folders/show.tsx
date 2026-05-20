@@ -11,15 +11,20 @@ import {
 import { Head, router, setLayoutProps, useForm } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
 import {
+    AlertCircle,
     ArrowDown,
     ArrowUp,
     ArrowUpDown,
+    CheckCircle2,
+    Clock,
     Film,
     Folder,
     FolderPlus,
     Music,
+    Upload,
 } from 'lucide-react';
 import * as React from 'react';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -31,6 +36,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 import {
     Select,
     SelectContent,
@@ -42,6 +48,23 @@ import { formatBytes } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import * as filesRoute from '@/routes/files';
 import * as foldersRoute from '@/routes/folders';
+import * as uploadRoute from '@/routes/upload';
+
+const ACCEPTED_EXTENSIONS = '.mp4,.mkv,.avi,.mp3,.wav,.flac,.ogg';
+const MAX_SIZE_BYTES = 500 * 1024 * 1024;
+
+type FileStatus = 'pending' | 'uploading' | 'done' | 'error';
+
+interface QueueItem {
+    id: string;
+    file: File;
+    name: string;
+    size: number;
+    mediaType: 'video' | 'audio';
+    status: FileStatus;
+    progress: number;
+    error?: string;
+}
 
 interface FolderItem {
     id: number;
@@ -126,6 +149,95 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
         name: '',
         parent_id: folder.id,
     });
+
+    // Upload queue
+    const [uploadQueue, setUploadQueueState] = React.useState<QueueItem[]>([]);
+    const queueRef = React.useRef<QueueItem[]>([]);
+    const uploadingRef = React.useRef<string | null>(null);
+    const startNextRef = React.useRef<() => void>(() => {});
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    const setUploadQueue = (items: QueueItem[]) => {
+        queueRef.current = items;
+        setUploadQueueState([...items]);
+    };
+
+    const startNext = () => {
+        if (uploadingRef.current) {
+            return;
+        }
+
+        const next = queueRef.current.find((q) => q.status === 'pending');
+
+        if (!next) {
+            return;
+        }
+
+        uploadingRef.current = next.id;
+        setUploadQueue(queueRef.current.map((q) => (q.id === next.id ? { ...q, status: 'uploading' as const } : q)));
+
+        router.post(
+            uploadRoute.store.url(),
+            { file: next.file, folder_id: folder.id },
+            {
+                forceFormData: true,
+                preserveState: true,
+                preserveScroll: true,
+                onProgress: (p) => {
+                    if (!p) return;
+                    setUploadQueue(queueRef.current.map((q) => (q.id === next.id ? { ...q, progress: p.percentage ?? 0 } : q)));
+                },
+                onSuccess: () => {
+                    uploadingRef.current = null;
+                    toast.success(`${next.name} загружен`);
+                    setUploadQueue(queueRef.current.map((q) => (q.id === next.id ? { ...q, status: 'done' as const, progress: 100 } : q)));
+                    startNextRef.current();
+                },
+                onError: (errs) => {
+                    uploadingRef.current = null;
+                    const msg = (Object.values(errs)[0] as string) ?? 'Ошибка загрузки';
+                    toast.error(`${next.name}: ${msg}`);
+                    setUploadQueue(queueRef.current.map((q) => (q.id === next.id ? { ...q, status: 'error' as const, error: msg } : q)));
+                    startNextRef.current();
+                },
+            },
+        );
+    };
+
+    startNextRef.current = startNext;
+
+    const handleFilesSelected = (selectedFiles: FileList | null) => {
+        if (!selectedFiles || selectedFiles.length === 0) return;
+
+        const newItems: QueueItem[] = [];
+
+        Array.from(selectedFiles).forEach((file) => {
+            if (file.size > MAX_SIZE_BYTES) {
+                toast.error(`${file.name} превышает 500 МБ`);
+                return;
+            }
+            newItems.push({
+                id: crypto.randomUUID(),
+                file,
+                name: file.name,
+                size: file.size,
+                mediaType: file.type.startsWith('video/') ? 'video' : 'audio',
+                status: 'pending' as const,
+                progress: 0,
+            });
+        });
+
+        if (newItems.length === 0) return;
+
+        setUploadQueue([...queueRef.current, ...newItems]);
+        startNext();
+
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const completedUploadCount = uploadQueue.filter((q) => q.status === 'done' || q.status === 'error').length;
 
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -291,10 +403,29 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                             <p className="text-xs text-muted-foreground">{folderMeta(folder)}</p>
                         </div>
                     </div>
-                    <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
-                        <FolderPlus className="size-3.5" />
-                        Новая подпапка
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept={ACCEPTED_EXTENSIONS}
+                            multiple
+                            className="hidden"
+                            onChange={(e) => handleFilesSelected(e.target.files)}
+                        />
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 gap-1.5"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <Upload className="size-3.5" />
+                            Загрузить файлы
+                        </Button>
+                        <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
+                            <FolderPlus className="size-3.5" />
+                            Новая подпапка
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Toolbar */}
@@ -331,6 +462,58 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                         </SelectContent>
                     </Select>
                 </div>
+
+                {/* Upload queue */}
+                {uploadQueue.length > 0 && (
+                    <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-sm font-medium">Очередь загрузки ({uploadQueue.length})</h2>
+                            {completedUploadCount > 0 && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setUploadQueue(queueRef.current.filter((q) => q.status !== 'done' && q.status !== 'error'))}
+                                >
+                                    Очистить завершённые ({completedUploadCount})
+                                </Button>
+                            )}
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            {uploadQueue.map((item) => (
+                                <div
+                                    key={item.id}
+                                    className="flex flex-col gap-2 rounded-lg border border-sidebar-border/70 p-3 dark:border-sidebar-border"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted">
+                                            {item.mediaType === 'video' ? (
+                                                <Film className="size-4 text-muted-foreground" />
+                                            ) : (
+                                                <Music className="size-4 text-muted-foreground" />
+                                            )}
+                                        </div>
+                                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                            <p className="truncate text-sm font-medium">{item.name}</p>
+                                            <p className="text-xs text-muted-foreground">{formatBytes(item.size)}</p>
+                                        </div>
+                                        <div className="flex shrink-0 items-center gap-2">
+                                            {item.status === 'done' && <CheckCircle2 className="size-4 text-green-500" />}
+                                            {item.status === 'error' && <AlertCircle className="size-4 text-destructive" />}
+                                            {item.status === 'pending' && <Clock className="size-4 text-muted-foreground" />}
+                                            {item.status === 'uploading' && (
+                                                <span className="tabular-nums text-xs text-muted-foreground">{item.progress}%</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {item.status === 'uploading' && <Progress value={item.progress} className="h-1.5" />}
+                                    {item.status === 'error' && item.error && (
+                                        <p className="text-xs text-destructive">{item.error}</p>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Table */}
                 <div className="rounded-xl border overflow-hidden">

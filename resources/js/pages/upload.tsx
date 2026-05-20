@@ -52,14 +52,14 @@ export default function UploadPage() {
 
     const startNext = () => {
         if (uploadingRef.current) {
-return;
-}
+            return;
+        }
 
         const next = queueRef.current.find((q) => q.status === 'pending');
 
         if (!next) {
-return;
-}
+            return;
+        }
 
         uploadingRef.current = next.id;
         setQueue(queueRef.current.map((q) => (q.id === next.id ? { ...q, status: 'uploading' as const } : q)));
@@ -70,8 +70,8 @@ return;
             preserveScroll: true,
             onProgress: (p) => {
                 if (!p) {
-return;
-}
+                    return;
+                }
 
                 setQueue(queueRef.current.map((q) => (q.id === next.id ? { ...q, progress: p.percentage ?? 0 } : q)));
             },
@@ -101,8 +101,8 @@ return;
         });
 
         if (!accepted.length) {
-return;
-}
+            return;
+        }
 
         const newItems: QueueItem[] = accepted.map((file) => ({
             id: crypto.randomUUID(),
