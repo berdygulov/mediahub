@@ -30,22 +30,12 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
     {
-        title: 'Все файлы',
+        title: 'Мои файлы',
         href: filesIndex(),
         icon: HardDrive,
     },
     {
-        title: 'Видео',
-        href: filesIndex({ query: { type: 'video' } }),
-        icon: Film,
-    },
-    {
-        title: 'Аудио',
-        href: filesIndex({ query: { type: 'audio' } }),
-        icon: Music,
-    },
-    {
-        title: 'Папки',
+        title: 'Мои папки',
         href: foldersIndex(),
         icon: Folder,
     },
@@ -55,7 +45,7 @@ const mainNavItems: NavItem[] = [
         icon: Search,
     },
     {
-        title: 'Загрузка',
+        title: 'Загрузить',
         href: uploadCreate(),
         icon: Upload,
     },
@@ -98,7 +88,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMain items={mainNavItems} label="Мой контекст"/>
                 {isAdmin && <NavMain items={adminNavItems} label="Администратор" />}
             </SidebarContent>
 
