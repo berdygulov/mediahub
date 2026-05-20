@@ -20,7 +20,7 @@ class FileController extends Controller
     {
         $user = $request->user();
 
-        $query = File::query()->with(['folder', 'user']);
+        $query = File::query()->with(['folder.parent.parent.parent', 'user']);
 
         if (! $user->is_admin) {
             $query->where('user_id', $user->id);
@@ -49,6 +49,22 @@ class FileController extends Controller
         $query->orderBy($sort, $order);
 
         $files = $query->paginate(10)->withQueryString();
+
+        $files->getCollection()->transform(function ($file) {
+            if ($file->folder) {
+                $segments = [];
+                $current = $file->folder;
+
+                while ($current !== null) {
+                    array_unshift($segments, $current->name);
+                    $current = $current->parent;
+                }
+
+                $file->folder->path = implode(' / ', $segments);
+            }
+
+            return $file;
+        });
 
         return Inertia::render('files/index', [
             'files' => $files,

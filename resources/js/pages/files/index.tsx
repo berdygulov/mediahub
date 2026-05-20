@@ -42,11 +42,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn, formatBytes } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import * as filesRoute from '@/routes/files';
+import * as foldersRoute from '@/routes/folders';
 import * as uploadRoute from '@/routes/upload';
 
 interface FileFolder {
     id: number;
     name: string;
+    path: string;
 }
 
 interface FileOwner {
@@ -439,7 +441,16 @@ export default function FilesIndex({ files, filters }: Props) {
             header: 'Папка',
             cell: ({ row }) =>
                 row.original.folder ? (
-                    <span className="text-muted-foreground text-sm">{row.original.folder.name}</span>
+                    <Link
+                        href={foldersRoute.show(row.original.folder.id).url}
+                        className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                        title={row.original.folder.path}
+                    >
+                        <Folder className="size-3.5 shrink-0" />
+                        <span className="max-w-[200px] truncate">
+                            {row.original.folder.path.split(' / ').slice(-2).join(' / ')}
+                        </span>
+                    </Link>
                 ) : (
                     <span className="text-muted-foreground/40 text-sm">—</span>
                 ),
