@@ -23,14 +23,14 @@ import { create as uploadCreate } from '@/routes/upload';
 import type { User } from '@/types';
 import type { NavItem } from '@/types';
 
-const mainNavItems: NavItem[] = [
+const getMainNavItems = (isAdmin: boolean): NavItem[] => [
     {
         title: 'Главная',
         href: dashboard(),
         icon: LayoutGrid,
     },
     {
-        title: 'Мои файлы',
+        title: isAdmin ? 'Все файлы' : 'Мои файлы',
         href: filesIndex(),
         icon: HardDrive,
     },
@@ -88,7 +88,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} label="Мой контекст"/>
+                <NavMain items={getMainNavItems(isAdmin)} label={isAdmin ? 'Общий контекст' : 'Мой контекст'} />
                 {isAdmin && <NavMain items={adminNavItems} label="Администратор" />}
             </SidebarContent>
 
