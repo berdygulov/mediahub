@@ -22,7 +22,7 @@ class UploadController extends Controller
         $request->validate([
             'file' => [
                 'required',
-                FileRule::types(['mp4', 'mkv', 'avi', 'mp3', 'wav', 'flac'])
+                FileRule::types(['mp4', 'mkv', 'avi', 'mp3', 'wav', 'flac', 'ogg'])
                     ->max('500mb'),
             ],
         ]);

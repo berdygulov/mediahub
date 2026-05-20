@@ -22,6 +22,7 @@ const ACCEPTED_TYPES = {
     'audio/x-wav': ['.wav'],
     'audio/flac': ['.flac'],
     'audio/x-flac': ['.flac'],
+    'audio/ogg': ['.ogg'],
 };
 
 type FileStatus = 'pending' | 'uploading' | 'done' | 'error';
@@ -153,7 +154,7 @@ return;
                     </div>
                     <div className="flex flex-col gap-1">
                         <p className="text-sm font-medium">{isDragActive ? 'Отпустите файлы' : 'Перетащите файлы сюда'}</p>
-                        <p className="text-xs text-muted-foreground">или нажмите для выбора · MP4, MKV, AVI, MP3, WAV, FLAC · макс 500 МБ</p>
+                        <p className="text-xs text-muted-foreground">или нажмите для выбора · MP4, MKV, AVI, MP3, WAV, FLAC, OGG · макс 500 МБ</p>
                     </div>
                 </div>
 
@@ -220,7 +221,7 @@ return;
                             <span className="text-xs font-medium">{ext}</span>
                         </div>
                     ))}
-                    {(['MP3', 'WAV', 'FLAC'] as const).map((ext) => (
+                    {(['MP3', 'WAV', 'FLAC', 'OGG'] as const).map((ext) => (
                         <div
                             key={ext}
                             className="flex items-center gap-2 rounded-lg border border-sidebar-border/70 p-3 dark:border-sidebar-border"

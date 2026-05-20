@@ -69,6 +69,25 @@ class UploadControllerTest extends TestCase
         ]);
     }
 
+    public function test_authenticated_user_can_upload_an_ogg_file(): void
+    {
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $file = UploadedFile::fake()->create('audio.ogg', 512, 'audio/ogg');
+
+        $response = $this->actingAs($user)->post(route('upload.store'), ['file' => $file]);
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseHas('files', [
+            'user_id' => $user->id,
+            'name' => 'audio.ogg',
+            'disk' => 'local',
+            'type' => 'audio',
+        ]);
+    }
+
     public function test_file_is_required(): void
     {
         $user = User::factory()->create();
