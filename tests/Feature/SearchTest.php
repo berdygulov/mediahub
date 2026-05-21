@@ -197,4 +197,50 @@ class SearchTest extends TestCase
                 ->where('folders.0.path', [])
             );
     }
+
+    public function test_admin_sees_all_users_folders(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $other = User::factory()->create();
+
+        Folder::factory()->for($other)->create(['name' => 'other_secret_folder']);
+
+        $this->actingAs($admin)
+            ->get(route('search.index', ['q' => 'other_secret']))
+            ->assertInertia(fn ($page) => $page
+                ->has('folders', 1)
+                ->where('folders.0.name', 'other_secret_folder')
+            );
+    }
+
+    public function test_admin_sees_all_users_files(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $other = User::factory()->create();
+
+        File::factory()->for($other)->video()->create(['name' => 'other_secret_video.mp4']);
+
+        $this->actingAs($admin)
+            ->get(route('search.index', ['q' => 'other_secret']))
+            ->assertInertia(fn ($page) => $page
+                ->has('files', 1)
+                ->where('files.0.name', 'other_secret_video.mp4')
+            );
+    }
+
+    public function test_non_admin_does_not_see_other_users_content(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+
+        File::factory()->for($other)->create(['name' => 'hidden_video.mp4']);
+        Folder::factory()->for($other)->create(['name' => 'hidden_folder']);
+
+        $this->actingAs($user)
+            ->get(route('search.index', ['q' => 'hidden']))
+            ->assertInertia(fn ($page) => $page
+                ->where('folders', [])
+                ->where('files', [])
+            );
+    }
 }

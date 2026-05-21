@@ -88,8 +88,8 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={getMainNavItems(isAdmin)} label={isAdmin ? 'Общий контекст' : 'Мой контекст'} />
-                {isAdmin && <NavMain items={adminNavItems} label="Администратор" />}
+                <NavMain items={getMainNavItems(isAdmin)} label="Медиафайлы" />
+                {isAdmin && <NavMain items={adminNavItems} label="Администрирование" />}
             </SidebarContent>
 
             <SidebarFooter>

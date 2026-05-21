@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ChevronRight, Film, Folder, Music, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type React from 'react';
@@ -19,6 +19,7 @@ interface PathSegment {
 interface FolderResult {
     id: number;
     name: string;
+    owner_name: string;
     path: PathSegment[];
 }
 
@@ -28,6 +29,7 @@ interface FileResult {
     type: 'video' | 'audio';
     mime_type: string;
     size: number;
+    owner_name: string;
     folder_path: PathSegment[];
 }
 
@@ -58,7 +60,7 @@ function BreadcrumbPath({ path, emptyMessage }: { path: PathSegment[]; emptyMess
 
     return (
         <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-            <span>Root</span>
+            <span>Корень</span>
             {path.map((segment) => (
                 <span key={segment.id} className="flex items-center gap-0.5">
                     <ChevronRight className="size-3 shrink-0" />
@@ -76,6 +78,8 @@ function BreadcrumbPath({ path, emptyMessage }: { path: PathSegment[]; emptyMess
 }
 
 export default function SearchPage({ query, type, folders, files }: Props) {
+    const { auth } = usePage().props;
+    const isAdmin = (auth as { user: { is_admin: boolean } }).user?.is_admin;
     const [searchInput, setSearchInput] = useState(query);
     const hasQuery = query.length >= 2;
 
@@ -158,7 +162,7 @@ export default function SearchPage({ query, type, folders, files }: Props) {
                         {/* Folders section */}
                         {folders.length > 0 && (
                             <div className="flex flex-col gap-2">
-                                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                <p className="text-xs font-medium tracking-wide text-muted-foreground">
                                     Папки · {folders.length}
                                 </p>
                                 <div className="overflow-hidden rounded-xl border">
@@ -174,7 +178,15 @@ export default function SearchPage({ query, type, folders, files }: Props) {
                                                     </div>
                                                     <div className="min-w-0 flex-1">
                                                         <p className="truncate text-sm font-medium">{folder.name}</p>
-                                                        <BreadcrumbPath path={folder.path} emptyMessage="Корень" />
+                                                        <div className="flex items-center gap-2">
+                                                            <BreadcrumbPath path={folder.path} emptyMessage="Корень" />
+                                                            {isAdmin && (
+                                                                <>
+                                                                    <span className="text-xs text-muted-foreground/50">·</span>
+                                                                    <span className="text-xs text-muted-foreground">{folder.owner_name}</span>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                                                 </Link>
@@ -188,7 +200,7 @@ export default function SearchPage({ query, type, folders, files }: Props) {
                         {/* Files section */}
                         {files.length > 0 && (
                             <div className="flex flex-col gap-2">
-                                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                <p className="text-xs font-medium tracking-wide text-muted-foreground">
                                     Файлы · {files.length}
                                 </p>
                                 <div className="overflow-hidden rounded-xl border">
@@ -218,6 +230,12 @@ export default function SearchPage({ query, type, folders, files }: Props) {
                                                             <BreadcrumbPath path={file.folder_path} emptyMessage="Без папки" />
                                                             <span className="text-xs text-muted-foreground/50">·</span>
                                                             <span className="text-xs text-muted-foreground">{formatBytes(file.size)}</span>
+                                                            {isAdmin && (
+                                                                <>
+                                                                    <span className="text-xs text-muted-foreground/50">·</span>
+                                                                    <span className="text-xs text-muted-foreground">{file.owner_name}</span>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <ChevronRight className="size-4 shrink-0 text-muted-foreground" />

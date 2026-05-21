@@ -26,29 +26,37 @@ class SearchController extends Controller
 
         if (strlen($query) >= 2) {
             $user = $request->user();
+            $isAdmin = $user->is_admin;
 
-            // Load all user folders once for in-memory path resolution (avoids N+1).
-            $allFolders = Folder::where('user_id', $user->id)
-                ->select(['id', 'parent_id', 'name'])
-                ->get()
-                ->keyBy('id');
+            $allFoldersQuery = Folder::select(['id', 'parent_id', 'name']);
+            if (! $isAdmin) {
+                $allFoldersQuery->where('user_id', $user->id);
+            }
+            $allFolders = $allFoldersQuery->get()->keyBy('id');
 
             if (! $type || $type === 'folder') {
-                $folders = Folder::where('user_id', $user->id)
-                    ->where('name', 'like', '%'.$query.'%')
+                $foldersQuery = Folder::with('user:id,name')->where('name', 'like', '%'.$query.'%');
+                if (! $isAdmin) {
+                    $foldersQuery->where('user_id', $user->id);
+                }
+
+                $folders = $foldersQuery
                     ->limit(20)
                     ->get()
                     ->map(fn (Folder $folder): array => [
                         'id' => $folder->id,
                         'name' => $folder->name,
+                        'owner_name' => $folder->user->name,
                         'path' => $this->buildPath($folder->parent_id, $allFolders),
                     ])
                     ->all();
             }
 
             if (! $type || in_array($type, ['video', 'audio'], true)) {
-                $filesQuery = File::where('user_id', $user->id)
-                    ->where('name', 'like', '%'.$query.'%');
+                $filesQuery = File::with('user:id,name')->where('name', 'like', '%'.$query.'%');
+                if (! $isAdmin) {
+                    $filesQuery->where('user_id', $user->id);
+                }
 
                 if ($type) {
                     $filesQuery->where('type', $type);
@@ -63,6 +71,7 @@ class SearchController extends Controller
                         'type' => $file->type,
                         'mime_type' => $file->mime_type,
                         'size' => $file->size,
+                        'owner_name' => $file->user->name,
                         'folder_path' => $this->buildFilePath($file->folder_id, $allFolders),
                     ])
                     ->all();
