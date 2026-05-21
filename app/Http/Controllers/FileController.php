@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\File;
 use App\Models\Folder;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,8 @@ class FileController extends Controller
 
         if (! $user->is_admin) {
             $query->where('user_id', $user->id);
+        } elseif ($ownerId = $request->query('owner_id')) {
+            $query->where('user_id', $ownerId);
         }
 
         if ($search = $request->query('search')) {
@@ -66,6 +69,10 @@ class FileController extends Controller
             return $file;
         });
 
+        $users = $user->is_admin
+            ? User::orderBy('name')->get(['id', 'name'])
+            : collect();
+
         return Inertia::render('files/index', [
             'files' => $files,
             'filters' => [
@@ -75,7 +82,9 @@ class FileController extends Controller
                 'to' => $request->query('to', ''),
                 'sort' => $sort,
                 'order' => $order,
+                'owner_id' => $request->query('owner_id', ''),
             ],
+            'users' => $users,
         ]);
     }
 

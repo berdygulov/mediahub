@@ -6,6 +6,8 @@ import {
     ArrowDown,
     ArrowUp,
     ArrowUpDown,
+    Check,
+    ChevronDown,
     ChevronRight,
     Download,
     Eye,
@@ -22,6 +24,7 @@ import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
     Dialog,
     DialogContent,
@@ -91,11 +94,18 @@ interface Filters {
     to: string;
     sort: string;
     order: string;
+    owner_id: string;
+}
+
+interface UserOption {
+    id: number;
+    name: string;
 }
 
 interface Props {
     files: PaginatedFiles;
     filters: Filters;
+    users: UserOption[];
 }
 
 interface FlatFolder {
@@ -219,7 +229,7 @@ function SortIcon({ column, sort, order }: { column: string; sort: string; order
     );
 }
 
-export default function FilesIndex({ files, filters }: Props) {
+export default function FilesIndex({ files, filters, users }: Props) {
     const { auth } = usePage().props;
     const isAdmin = auth.user.is_admin;
 
@@ -233,6 +243,10 @@ export default function FilesIndex({ files, filters }: Props) {
               }
             : undefined,
     );
+    const [ownerFilter, setOwnerFilter] = React.useState(filters.owner_id || '');
+    const [ownerOpen, setOwnerOpen] = React.useState(false);
+    const [ownerSearch, setOwnerSearch] = React.useState('');
+
     const [fileToDelete, setFileToDelete] = React.useState<FileRecord | null>(null);
     const [isDeleting, setIsDeleting] = React.useState(false);
 
@@ -247,9 +261,21 @@ export default function FilesIndex({ files, filters }: Props) {
     const searchRef = React.useRef(search);
     const typeFilterRef = React.useRef(typeFilter);
     const dateRangeRef = React.useRef(dateRange);
+    const ownerFilterRef = React.useRef(ownerFilter);
     searchRef.current = search;
     typeFilterRef.current = typeFilter;
     dateRangeRef.current = dateRange;
+    ownerFilterRef.current = ownerFilter;
+
+    const filteredUsers = React.useMemo(
+        () => users.filter((u) => u.name.toLowerCase().includes(ownerSearch.toLowerCase())),
+        [users, ownerSearch],
+    );
+
+    const selectedOwner = React.useMemo(
+        () => users.find((u) => String(u.id) === ownerFilter) ?? null,
+        [users, ownerFilter],
+    );
 
     React.useEffect(() => {
         if (!fileToMove) {
@@ -290,6 +316,7 @@ export default function FilesIndex({ files, filters }: Props) {
             to: range?.to ? format(range.to, 'yyyy-MM-dd') : undefined,
             sort: filters.sort,
             order: filters.order,
+            owner_id: ownerFilterRef.current || undefined,
             ...overrides,
         };
         router.get(filesRoute.index.url(), params, { preserveState: true, replace: true });
@@ -316,6 +343,15 @@ export default function FilesIndex({ files, filters }: Props) {
         navigate({ type: value !== 'all' ? value : undefined });
     }
 
+    function handleOwnerChange(userId: string) {
+        cancelPendingSearch();
+        setOwnerFilter(userId);
+        ownerFilterRef.current = userId;
+        setOwnerOpen(false);
+        setOwnerSearch('');
+        navigate({ owner_id: userId || undefined });
+    }
+
     function handleDateRangeChange(range: DateRange | undefined) {
         setDateRange(range);
         dateRangeRef.current = range;
@@ -339,9 +375,12 @@ export default function FilesIndex({ files, filters }: Props) {
         setSearch('');
         setTypeFilter('all');
         setDateRange(undefined);
+        setOwnerFilter('');
+        setOwnerSearch('');
         searchRef.current = '';
         typeFilterRef.current = 'all';
         dateRangeRef.current = undefined;
+        ownerFilterRef.current = '';
         router.get(filesRoute.index.url(), {}, { preserveState: true, replace: true });
     }
 
@@ -527,7 +566,7 @@ export default function FilesIndex({ files, filters }: Props) {
         manualSorting: true,
     });
 
-    const hasActiveFilters = Boolean(search || typeFilter !== 'all' || dateRange);
+    const hasActiveFilters = Boolean(search || typeFilter !== 'all' || dateRange || ownerFilter);
 
     return (
         <>
@@ -569,6 +608,62 @@ export default function FilesIndex({ files, filters }: Props) {
                             className="h-8 text-sm"
                             placeholder="Период"
                         />
+                        {isAdmin && (
+                            <Popover open={ownerOpen} onOpenChange={setOwnerOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 w-44 justify-between font-normal"
+                                    >
+                                        <span className="truncate">
+                                            {selectedOwner ? selectedOwner.name : 'Все пользователи'}
+                                        </span>
+                                        <ChevronDown className="ml-1 size-3 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-52 p-1" align="start">
+                                    <Input
+                                        placeholder="Поиск…"
+                                        value={ownerSearch}
+                                        onChange={(e) => setOwnerSearch(e.target.value)}
+                                        className="mb-1 h-7 text-sm"
+                                    />
+                                    <div className="max-h-52 overflow-y-auto">
+                                        <button
+                                            type="button"
+                                            className={cn(
+                                                'flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent',
+                                                !ownerFilter && 'bg-accent font-medium',
+                                            )}
+                                            onClick={() => handleOwnerChange('')}
+                                        >
+                                            <Check className={cn('size-3.5 shrink-0', ownerFilter ? 'opacity-0' : '')} />
+                                            Все пользователи
+                                        </button>
+                                        {filteredUsers.map((u) => (
+                                            <button
+                                                key={u.id}
+                                                type="button"
+                                                className={cn(
+                                                    'flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent',
+                                                    ownerFilter === String(u.id) && 'bg-accent font-medium',
+                                                )}
+                                                onClick={() => handleOwnerChange(String(u.id))}
+                                            >
+                                                <Check className={cn('size-3.5 shrink-0', ownerFilter === String(u.id) ? '' : 'opacity-0')} />
+                                                {u.name}
+                                            </button>
+                                        ))}
+                                        {filteredUsers.length === 0 && (
+                                            <p className="text-muted-foreground px-2 py-3 text-center text-xs">
+                                                Ничего не найдено
+                                            </p>
+                                        )}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        )}
                         {hasActiveFilters && (
                             <Button
                                 variant="ghost"
