@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -10,14 +11,50 @@ use Inertia\Response;
 
 class UserController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        return Inertia::render('admin/users');
+        $search = $request->string('search')->trim()->value();
+        $sort = $request->input('sort', 'created_at');
+        $order = $request->input('order', 'desc');
+
+        if (! in_array($sort, ['name', 'created_at'])) {
+            $sort = 'created_at';
+        }
+
+        if (! in_array($order, ['asc', 'desc'])) {
+            $order = 'desc';
+        }
+
+        $users = User::query()
+            ->select(['id', 'name', 'email', 'is_admin', 'created_at'])
+            ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            }))
+            ->orderBy($sort, $order)
+            ->paginate(20)
+            ->withQueryString();
+
+        return Inertia::render('admin/users', [
+            'users' => $users,
+            'filters' => [
+                'search' => $search,
+                'sort' => $sort,
+                'order' => $order,
+            ],
+        ]);
     }
 
     public function update(Request $request, int $id): RedirectResponse
     {
-        // TODO: update user role / status
+        $user = User::findOrFail($id);
+
+        $validated = $request->validate([
+            'is_admin' => ['required', 'boolean'],
+        ]);
+
+        $user->update($validated);
+
         return back();
     }
 

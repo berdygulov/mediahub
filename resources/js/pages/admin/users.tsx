@@ -1,51 +1,460 @@
-import { Head } from '@inertiajs/react';
-import { Users } from 'lucide-react';
-import { dashboard } from '@/routes';
-import * as adminUsers from '@/routes/admin/users';
+import { Head, Link, router } from '@inertiajs/react';
+import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import type { ColumnDef } from '@tanstack/react-table';
+import { format, parseISO } from 'date-fns';
+import { ArrowDown, ArrowUp, ArrowUpDown, FolderOpen, Pencil, Shield, Users } from 'lucide-react';
+import * as React from 'react';
 
-export default function AdminUsers() {
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { dashboard } from '@/routes';
+import * as adminUsersRoute from '@/routes/admin/users';
+import * as filesRoute from '@/routes/files';
+
+interface UserRecord {
+    id: number;
+    name: string;
+    email: string;
+    is_admin: boolean;
+    created_at: string;
+}
+
+interface PaginationLink {
+    url: string | null;
+    label: string;
+    active: boolean;
+}
+
+interface PaginatedUsers {
+    data: UserRecord[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+    links: PaginationLink[];
+}
+
+interface Filters {
+    search: string;
+    sort: string;
+    order: string;
+}
+
+interface Props {
+    users: PaginatedUsers;
+    filters: Filters;
+}
+
+function decodePaginationLabel(label: string): string {
+    return label.replace('&laquo;', '«').replace('&raquo;', '»');
+}
+
+function SortIcon({ column, sort, order }: { column: string; sort: string; order: string }) {
+    if (sort !== column) {
+        return <ArrowUpDown className="ml-1 inline size-3 opacity-40" />;
+    }
+
+    return order === 'asc' ? (
+        <ArrowUp className="ml-1 inline size-3" />
+    ) : (
+        <ArrowDown className="ml-1 inline size-3" />
+    );
+}
+
+export default function AdminUsers({ users, filters }: Props) {
+    const [search, setSearch] = React.useState(filters.search);
+    const [userToEdit, setUserToEdit] = React.useState<UserRecord | null>(null);
+    const [editIsAdmin, setEditIsAdmin] = React.useState(false);
+    const [isUpdating, setIsUpdating] = React.useState(false);
+
+    const searchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const searchRef = React.useRef(search);
+    searchRef.current = search;
+
+    function navigate(overrides: Record<string, string | undefined> = {}) {
+        const params: Record<string, string | undefined> = {
+            search: searchRef.current || undefined,
+            sort: filters.sort,
+            order: filters.order,
+            ...overrides,
+        };
+        router.get(adminUsersRoute.index.url(), params, { preserveState: true, replace: true });
+    }
+
+    function cancelPendingSearch() {
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+            searchTimeoutRef.current = null;
+        }
+    }
+
+    function handleSearchChange(value: string) {
+        setSearch(value);
+        searchRef.current = value;
+        cancelPendingSearch();
+        searchTimeoutRef.current = setTimeout(
+            () => navigate({ search: value || undefined, page: '1' }),
+            350,
+        );
+    }
+
+    function handleSort(column: string) {
+        const newOrder = filters.sort === column && filters.order === 'asc' ? 'desc' : 'asc';
+        navigate({ sort: column, order: newOrder });
+    }
+
+    function clearFilters() {
+        cancelPendingSearch();
+        setSearch('');
+        searchRef.current = '';
+        router.get(adminUsersRoute.index.url(), {}, { preserveState: true, replace: true });
+    }
+
+    function openEditDialog(user: UserRecord) {
+        setEditIsAdmin(user.is_admin);
+        setUserToEdit(user);
+    }
+
+    function handleUpdate() {
+        if (!userToEdit) {
+            return;
+        }
+
+        setIsUpdating(true);
+        router.patch(
+            adminUsersRoute.update(userToEdit.id).url,
+            { is_admin: editIsAdmin },
+            {
+                preserveScroll: true,
+                onSuccess: () => setUserToEdit(null),
+                onFinish: () => setIsUpdating(false),
+            },
+        );
+    }
+
+    const columns: ColumnDef<UserRecord>[] = [
+        {
+            accessorKey: 'name',
+            header: () => (
+                <button
+                    className="flex cursor-pointer items-center hover:text-foreground"
+                    onClick={() => handleSort('name')}
+                >
+                    Имя <SortIcon column="name" sort={filters.sort} order={filters.order} />
+                </button>
+            ),
+            cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
+        },
+        {
+            accessorKey: 'email',
+            header: 'Email',
+            cell: ({ row }) => (
+                <span className="text-muted-foreground text-sm">{row.original.email}</span>
+            ),
+        },
+        {
+            accessorKey: 'is_admin',
+            header: 'Роль',
+            cell: ({ row }) =>
+                row.original.is_admin ? (
+                    <span className="text-primary inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium">
+                        <Shield className="size-3" />
+                        Админ
+                    </span>
+                ) : (
+                    <span className="text-muted-foreground/60 text-sm">—</span>
+                ),
+        },
+        {
+            accessorKey: 'created_at',
+            header: () => (
+                <button
+                    className="flex cursor-pointer items-center hover:text-foreground"
+                    onClick={() => handleSort('created_at')}
+                >
+                    Зарегистрирован{' '}
+                    <SortIcon column="created_at" sort={filters.sort} order={filters.order} />
+                </button>
+            ),
+            cell: ({ row }) => (
+                <span className="text-muted-foreground whitespace-nowrap text-sm">
+                    {format(parseISO(row.original.created_at), 'dd.MM.yyyy HH:mm')}
+                </span>
+            ),
+        },
+        {
+            id: 'actions',
+            header: '',
+            cell: ({ row }) => (
+                <div className="flex items-center justify-end gap-1">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7"
+                        title="Редактировать пользователя"
+                        onClick={() => openEditDialog(row.original)}
+                    >
+                        <Pencil className="size-3.5" />
+                    </Button>
+                    <Link
+                        href={filesRoute.index.url({ query: { owner_id: row.original.id } })}
+                    >
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7"
+                            title="Просмотреть файлы и папки"
+                        >
+                            <FolderOpen className="size-3.5" />
+                        </Button>
+                    </Link>
+                </div>
+            ),
+        },
+    ];
+
+    const table = useReactTable({
+        data: users.data,
+        columns,
+        getCoreRowModel: getCoreRowModel(),
+        manualSorting: true,
+    });
+
+    const hasActiveFilters = Boolean(search);
+
     return (
         <>
-            <Head title="Администратор — Пользователи" />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 lg:p-6">
+            <Head title="Пользователи" />
 
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Users className="size-5 text-muted-foreground" />
-                        <h1 className="text-lg font-semibold">Пользователи</h1>
+            <div className="flex h-full flex-1 flex-col gap-4 p-4 lg:p-6">
+                {/* Toolbar */}
+                <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                        placeholder="Поиск по имени или email…"
+                        value={search}
+                        onChange={(e) => handleSearchChange(e.target.value)}
+                        className="h-8 w-64"
+                    />
+                    {hasActiveFilters && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground h-8 px-2 text-xs"
+                            onClick={clearFilters}
+                        >
+                            Сбросить фильтры
+                        </Button>
+                    )}
+                </div>
+
+                {/* Table */}
+                <div className="overflow-hidden rounded-xl border">
+                    {users.data.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center gap-3 p-12 text-center">
+                            <div className="bg-muted flex size-12 items-center justify-center rounded-full">
+                                <Users className="text-muted-foreground size-5" />
+                            </div>
+                            <p className="text-sm font-medium">Пользователи не найдены</p>
+                            {hasActiveFilters && (
+                                <p className="text-muted-foreground text-xs">
+                                    Попробуйте изменить параметры поиска
+                                </p>
+                            )}
+                        </div>
+                    ) : (
+                        <>
+                            {/* Mobile: card list */}
+                            <div className="divide-y md:hidden">
+                                {users.data.map((user) => (
+                                    <div key={user.id} className="flex flex-col gap-2 px-4 py-3">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex min-w-0 flex-col">
+                                                <span className="truncate text-sm font-medium">
+                                                    {user.name}
+                                                </span>
+                                                <span className="text-muted-foreground truncate text-xs">
+                                                    {user.email}
+                                                </span>
+                                            </div>
+                                            <div className="flex shrink-0 items-center gap-0.5">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-7"
+                                                    title="Редактировать пользователя"
+                                                    onClick={() => openEditDialog(user)}
+                                                >
+                                                    <Pencil className="size-3.5" />
+                                                </Button>
+                                                <Link
+                                                    href={filesRoute.index.url({
+                                                        query: { owner_id: user.id },
+                                                    })}
+                                                >
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="size-7"
+                                                        title="Просмотреть файлы и папки"
+                                                    >
+                                                        <FolderOpen className="size-3.5" />
+                                                    </Button>
+                                                </Link>
+                                            </div>
+                                        </div>
+                                        <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                                            {user.is_admin && (
+                                                <span className="text-primary inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium">
+                                                    <Shield className="size-3" />
+                                                    Админ
+                                                </span>
+                                            )}
+                                            <span className="whitespace-nowrap">
+                                                {format(parseISO(user.created_at), 'dd.MM.yyyy HH:mm')}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Desktop: table */}
+                            <div className="overflow-x-auto">
+                                <table className="hidden w-full text-sm md:table">
+                                    <thead className="bg-muted/50 border-b">
+                                        {table.getHeaderGroups().map((headerGroup) => (
+                                            <tr key={headerGroup.id}>
+                                                {headerGroup.headers.map((header) => (
+                                                    <th
+                                                        key={header.id}
+                                                        className="text-muted-foreground px-4 py-2.5 text-left text-xs font-medium"
+                                                    >
+                                                        {!header.isPlaceholder &&
+                                                            flexRender(
+                                                                header.column.columnDef.header,
+                                                                header.getContext(),
+                                                            )}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </thead>
+                                    <tbody>
+                                        {table.getRowModel().rows.map((row) => (
+                                            <tr
+                                                key={row.id}
+                                                className="hover:bg-muted/30 border-b transition-colors last:border-0"
+                                            >
+                                                {row.getVisibleCells().map((cell) => (
+                                                    <td key={cell.id} className="px-4 py-3">
+                                                        {flexRender(
+                                                            cell.column.columnDef.cell,
+                                                            cell.getContext(),
+                                                        )}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                {/* Pagination */}
+                {users.last_page > 1 && (
+                    <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-y-2 text-sm">
+                        <span>
+                            {users.from}–{users.to} из {users.total} пользователей
+                        </span>
+                        <div className="flex flex-wrap items-center gap-1">
+                            {users.links.map((link, i) =>
+                                link.url ? (
+                                    <Link
+                                        key={i}
+                                        href={link.url}
+                                        preserveState
+                                        className={`rounded px-2.5 py-1 text-xs transition-colors ${
+                                            link.active
+                                                ? 'bg-primary text-primary-foreground'
+                                                : 'hover:bg-muted'
+                                        }`}
+                                    >
+                                        {decodePaginationLabel(link.label)}
+                                    </Link>
+                                ) : (
+                                    <span
+                                        key={i}
+                                        className="cursor-default rounded px-2.5 py-1 text-xs opacity-40"
+                                    >
+                                        {decodePaginationLabel(link.label)}
+                                    </span>
+                                ),
+                            )}
+                        </div>
                     </div>
-                </div>
-
-                {/* Users table — TODO: replace with real data */}
-                <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="border-b bg-muted/40">
-                                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Имя</th>
-                                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Email</th>
-                                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Роль</th>
-                                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Зарегистрирован</th>
-                                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Действия</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
-                                    Пользователи не найдены
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                )}
             </div>
+
+            {/* Edit user dialog */}
+            <Dialog open={!!userToEdit} onOpenChange={(open) => !open && setUserToEdit(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Редактировать пользователя</DialogTitle>
+                        <DialogDescription>
+                            Изменение прав для{' '}
+                            <span className="text-foreground font-medium">
+                                {userToEdit?.name}
+                            </span>
+                            .
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex items-center gap-3 py-2">
+                        <Checkbox
+                            id="edit-is-admin"
+                            checked={editIsAdmin}
+                            onCheckedChange={(checked) => setEditIsAdmin(Boolean(checked))}
+                        />
+                        <Label htmlFor="edit-is-admin" className="flex flex-col gap-0.5">
+                            <span>Права администратора</span>
+                            <span className="text-muted-foreground text-xs font-normal">
+                                Предоставляет полный доступ к панели управления
+                            </span>
+                        </Label>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setUserToEdit(null)}
+                            disabled={isUpdating}
+                        >
+                            Отмена
+                        </Button>
+                        <Button onClick={handleUpdate} disabled={isUpdating}>
+                            {isUpdating ? 'Сохранение…' : 'Сохранить'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }
 
 AdminUsers.layout = {
     breadcrumbs: [
-        { title: 'Dashboard', href: dashboard() },
-        { title: 'Admin', href: '#' },
-        { title: 'Users', href: adminUsers.index() },
+        { title: 'Главная', href: dashboard() },
+        { title: 'Пользователи', href: adminUsersRoute.index() },
     ],
 };
