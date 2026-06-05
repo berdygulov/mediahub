@@ -1,5 +1,4 @@
 import { createInertiaApp } from '@inertiajs/react';
-import { MediaPlayerSheet } from '@/components/media-player-sheet';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { MediaPlayerProvider } from '@/contexts/media-player-context';
@@ -29,7 +28,6 @@ createInertiaApp({
                 <TooltipProvider delayDuration={0}>
                     {app}
                     <Toaster />
-                    <MediaPlayerSheet />
                 </TooltipProvider>
             </MediaPlayerProvider>
         );

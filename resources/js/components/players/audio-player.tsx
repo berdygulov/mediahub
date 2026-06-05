@@ -378,7 +378,7 @@ export function AudioPlayer({ streamUrl }: Props) {
                     <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
                         Частотный спектр
                     </p>
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex w-32 shrink-0 items-center justify-end gap-1.5">
                         <span ref={voiceDotRef} className="size-1.5 rounded-full bg-muted-foreground/40" />
                         <span ref={voiceLabelRef} className="text-muted-foreground text-xs font-medium">
                             Тишина

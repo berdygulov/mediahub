@@ -1,12 +1,15 @@
 import Plyr from 'plyr';
 import * as React from 'react';
 
+import { cn } from '@/lib/utils';
+
 interface Props {
     streamUrl: string;
     mimeType: string;
+    className?: string;
 }
 
-export function VideoPlayer({ streamUrl, mimeType }: Props) {
+export function VideoPlayer({ streamUrl, mimeType, className }: Props) {
     const videoRef = React.useRef<HTMLVideoElement>(null);
 
     React.useEffect(() => {
@@ -43,7 +46,7 @@ export function VideoPlayer({ streamUrl, mimeType }: Props) {
     }, [streamUrl]);
 
     return (
-        <div className="overflow-hidden rounded-lg">
+        <div className={cn('overflow-hidden rounded-lg', className)}>
             <video ref={videoRef} playsInline>
                 <source src={streamUrl} type={mimeType} />
             </video>
