@@ -1,6 +1,8 @@
 import { createInertiaApp } from '@inertiajs/react';
+import { MediaPlayerSheet } from '@/components/media-player-sheet';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { MediaPlayerProvider } from '@/contexts/media-player-context';
 import { initializeTheme } from '@/hooks/use-appearance';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
@@ -23,10 +25,13 @@ createInertiaApp({
     strictMode: true,
     withApp(app) {
         return (
-            <TooltipProvider delayDuration={0}>
-                {app}
-                <Toaster />
-            </TooltipProvider>
+            <MediaPlayerProvider>
+                <TooltipProvider delayDuration={0}>
+                    {app}
+                    <Toaster />
+                    <MediaPlayerSheet />
+                </TooltipProvider>
+            </MediaPlayerProvider>
         );
     },
     progress: {

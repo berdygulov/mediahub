@@ -15,6 +15,7 @@ import {
     Folder,
     FolderInput,
     Music,
+    Play,
     Trash2,
     Upload,
 } from 'lucide-react';
@@ -23,6 +24,7 @@ import type { DateRange } from 'react-day-picker';
 
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useMediaPlayer } from '@/contexts/media-player-context';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -232,6 +234,7 @@ function SortIcon({ column, sort, order }: { column: string; sort: string; order
 export default function FilesIndex({ files, filters, users }: Props) {
     const { auth } = usePage().props;
     const isAdmin = auth.user.is_admin;
+    const { play } = useMediaPlayer();
 
     const [search, setSearch] = React.useState(filters.search);
     const [typeFilter, setTypeFilter] = React.useState(filters.type || 'all');
@@ -484,6 +487,7 @@ export default function FilesIndex({ files, filters, users }: Props) {
                         href={foldersRoute.show(row.original.folder.id).url}
                         className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
                         title={row.original.folder.path}
+                        onClick={(e) => e.stopPropagation()}
                     >
                         <Folder className="size-3.5 shrink-0" />
                         <span className="max-w-[200px] truncate">
@@ -525,7 +529,27 @@ export default function FilesIndex({ files, filters, users }: Props) {
             id: 'actions',
             header: '',
             cell: ({ row }) => (
-                <div className="flex items-center justify-end gap-1">
+                <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7"
+                        title="Воспроизвести"
+                        onClick={() =>
+                            play({
+                                id: row.original.id,
+                                name: row.original.name,
+                                type: row.original.type,
+                                mime_type: row.original.mime_type,
+                                size: row.original.size,
+                                created_at: row.original.created_at,
+                                folder: row.original.folder,
+                                streamUrl: filesRoute.stream(row.original.id).url,
+                            })
+                        }
+                    >
+                        <Play className="size-3.5" />
+                    </Button>
                     <Link href={filesRoute.show(row.original.id).url}>
                         <Button variant="ghost" size="icon" className="size-7" title="Просмотр">
                             <Eye className="size-3.5" />
@@ -716,7 +740,11 @@ export default function FilesIndex({ files, filters, users }: Props) {
                             {/* Mobile: card list */}
                             <div className="divide-y md:hidden">
                                 {files.data.map((file) => (
-                                    <div key={file.id} className="flex flex-col gap-2 px-4 py-3">
+                                    <div
+                                        key={file.id}
+                                        className="flex flex-col gap-2 px-4 py-3 cursor-pointer"
+                                        onClick={() => router.visit(filesRoute.show(file.id).url)}
+                                    >
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="flex min-w-0 items-center gap-2">
                                                 {file.type === 'video' ? (
@@ -726,7 +754,27 @@ export default function FilesIndex({ files, filters, users }: Props) {
                                                 )}
                                                 <span className="truncate text-sm font-medium">{file.name}</span>
                                             </div>
-                                            <div className="flex shrink-0 items-center gap-0.5">
+                                            <div className="flex shrink-0 items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-7"
+                                                    title="Воспроизвести"
+                                                    onClick={() =>
+                                                        play({
+                                                            id: file.id,
+                                                            name: file.name,
+                                                            type: file.type,
+                                                            mime_type: file.mime_type,
+                                                            size: file.size,
+                                                            created_at: file.created_at,
+                                                            folder: file.folder,
+                                                            streamUrl: filesRoute.stream(file.id).url,
+                                                        })
+                                                    }
+                                                >
+                                                    <Play className="size-3.5" />
+                                                </Button>
                                                 <Link href={filesRoute.show(file.id).url}>
                                                     <Button variant="ghost" size="icon" className="size-7" title="Просмотр">
                                                         <Eye className="size-3.5" />
@@ -767,6 +815,7 @@ export default function FilesIndex({ files, filters, users }: Props) {
                                                     href={foldersRoute.show(file.folder.id).url}
                                                     className="inline-flex items-center gap-1 text-primary hover:underline"
                                                     title={file.folder.path}
+                                                    onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <Folder className="size-3 shrink-0" />
                                                     <span className="max-w-[160px] truncate">
@@ -807,7 +856,8 @@ export default function FilesIndex({ files, filters, users }: Props) {
                                     {table.getRowModel().rows.map((row) => (
                                         <tr
                                             key={row.id}
-                                            className="hover:bg-muted/30 border-b transition-colors last:border-0"
+                                            className="hover:bg-muted/30 border-b transition-colors last:border-0 cursor-pointer"
+                                            onClick={() => router.visit(filesRoute.show(row.original.id).url)}
                                         >
                                             {row.getVisibleCells().map((cell) => (
                                                 <td key={cell.id} className="px-4 py-3">

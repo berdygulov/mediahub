@@ -20,5 +20,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
             'is_admin' => 1,
         ]);
+
+        $this->call(FolderSeeder::class);
     }
 }

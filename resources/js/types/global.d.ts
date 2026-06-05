@@ -6,6 +6,7 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             sidebarOpen: boolean;
+            sidebarFolders: Array<{ id: number; name: string; parent_id: number | null }>;
             [key: string]: unknown;
         };
     }

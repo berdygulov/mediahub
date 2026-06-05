@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Folder;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -45,6 +46,12 @@ class HandleInertiaRequests extends Middleware
                 ]),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'sidebarFolders' => fn () => $request->user()
+                ? Folder::where('user_id', $request->user()->id)
+                    ->select(['id', 'name', 'parent_id'])
+                    ->orderBy('name')
+                    ->get()
+                : [],
         ];
     }
 }
