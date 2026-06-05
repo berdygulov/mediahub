@@ -8,7 +8,7 @@ import {
     getSortedRowModel,
     useReactTable,
 } from '@tanstack/react-table';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
 import { ArrowDown, ArrowUp, ArrowUpDown, Folder, FolderPlus } from 'lucide-react';
 import * as React from 'react';
@@ -65,6 +65,9 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
 }
 
 export default function FoldersIndex({ folders }: Props) {
+    const { auth } = usePage().props;
+    const isAdmin = auth.user.is_admin;
+
     const [showCreate, setShowCreate] = React.useState(false);
     const { data, setData, post, processing, errors, reset } = useForm({ name: '' });
 
@@ -150,10 +153,12 @@ export default function FoldersIndex({ folders }: Props) {
                         onChange={(e) => table.getColumn('name')?.setFilterValue(e.target.value)}
                         className="h-8 flex-1 sm:flex-none sm:w-52"
                     />
-                    <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
-                        <FolderPlus className="size-3.5" />
-                        Новая папка
-                    </Button>
+                    {isAdmin && (
+                        <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
+                            <FolderPlus className="size-3.5" />
+                            Новая папка
+                        </Button>
+                    )}
                 </div>
 
                 {/* Table */}
@@ -165,14 +170,16 @@ export default function FoldersIndex({ folders }: Props) {
                             </div>
                             <p className="text-sm font-medium">Папок пока нет</p>
                             <p className="text-xs text-muted-foreground">
-                                Создайте папку для организации медиафайлов
+                                {isAdmin ? 'Создайте папку для организации медиафайлов' : 'Папки пока не созданы'}
                             </p>
-                            <button
-                                className="mt-1 text-xs text-primary underline underline-offset-4 hover:text-primary/80"
-                                onClick={openCreate}
-                            >
-                                Создать папку
-                            </button>
+                            {isAdmin && (
+                                <button
+                                    className="mt-1 text-xs text-primary underline underline-offset-4 hover:text-primary/80"
+                                    onClick={openCreate}
+                                >
+                                    Создать папку
+                                </button>
+                            )}
                         </div>
                     ) : (
                         <>

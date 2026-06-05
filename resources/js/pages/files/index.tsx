@@ -545,15 +545,17 @@ export default function FilesIndex({ files, filters, users }: Props) {
                     >
                         <FolderInput className="size-3.5" />
                     </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive size-7"
-                        title="Удалить"
-                        onClick={() => setFileToDelete(row.original)}
-                    >
-                        <Trash2 className="size-3.5" />
-                    </Button>
+                    {isAdmin && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive size-7"
+                            title="Удалить"
+                            onClick={() => setFileToDelete(row.original)}
+                        >
+                            <Trash2 className="size-3.5" />
+                        </Button>
+                    )}
                 </div>
             ),
         },
@@ -675,12 +677,14 @@ export default function FilesIndex({ files, filters, users }: Props) {
                             </Button>
                         )}
                     </div>
-                    <Link href={uploadRoute.create.url()}>
-                        <Button size="sm" className="h-8 gap-1.5">
-                            <Upload className="size-3.5" />
-                            Загрузить
-                        </Button>
-                    </Link>
+                    {isAdmin && (
+                        <Link href={uploadRoute.create.url()}>
+                            <Button size="sm" className="h-8 gap-1.5">
+                                <Upload className="size-3.5" />
+                                Загрузить
+                            </Button>
+                        </Link>
+                    )}
                 </div>
 
                 {/* Table */}
@@ -694,9 +698,11 @@ export default function FilesIndex({ files, filters, users }: Props) {
                             <p className="text-muted-foreground text-xs">
                                 {hasActiveFilters
                                     ? 'Попробуйте изменить фильтры'
-                                    : 'Загрузите первый файл чтобы начать'}
+                                    : isAdmin
+                                      ? 'Загрузите первый файл чтобы начать'
+                                      : 'Файлы ещё не загружены'}
                             </p>
-                            {!hasActiveFilters && (
+                            {!hasActiveFilters && isAdmin && (
                                 <Link
                                     href={uploadRoute.create.url()}
                                     className="text-primary text-xs underline underline-offset-4"
@@ -740,15 +746,17 @@ export default function FilesIndex({ files, filters, users }: Props) {
                                                 >
                                                     <FolderInput className="size-3.5" />
                                                 </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="text-destructive hover:text-destructive size-7"
-                                                    title="Удалить"
-                                                    onClick={() => setFileToDelete(file)}
-                                                >
-                                                    <Trash2 className="size-3.5" />
-                                                </Button>
+                                                {isAdmin && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-destructive hover:text-destructive size-7"
+                                                        title="Удалить"
+                                                        onClick={() => setFileToDelete(file)}
+                                                    >
+                                                        <Trash2 className="size-3.5" />
+                                                    </Button>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-6 text-xs text-muted-foreground">

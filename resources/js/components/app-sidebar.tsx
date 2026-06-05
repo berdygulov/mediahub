@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Upload, Film, Music, Folder, Search, Shield, HardDrive, ScrollText, Settings } from 'lucide-react';
+import { LayoutGrid, Upload, Folder, Search, Shield, HardDrive, ScrollText, Settings } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -44,11 +44,15 @@ const getMainNavItems = (isAdmin: boolean): NavItem[] => [
         href: searchIndex(),
         icon: Search,
     },
-    {
-        title: 'Загрузить',
-        href: uploadCreate(),
-        icon: Upload,
-    },
+    ...(isAdmin
+        ? [
+              {
+                  title: 'Загрузить',
+                  href: uploadCreate(),
+                  icon: Upload,
+              },
+          ]
+        : []),
 ];
 
 const adminNavItems: NavItem[] = [

@@ -22,17 +22,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('files/{id}/download', [FileController::class, 'download'])->name('files.download');
     Route::get('files/{id}/folders', [FileController::class, 'folderTree'])->name('files.folders');
     Route::patch('files/{id}/folder', [FileController::class, 'moveFolder'])->name('files.move-folder');
-    Route::delete('files/{id}', [FileController::class, 'destroy'])->name('files.destroy');
+    Route::delete('files/{id}', [FileController::class, 'destroy'])->middleware('admin')->name('files.destroy');
 
     // Folders
     Route::get('folders', [FolderController::class, 'index'])->name('folders.index');
     Route::get('folders/{id}', [FolderController::class, 'show'])->name('folders.show');
-    Route::post('folders', [FolderController::class, 'store'])->name('folders.store');
-    Route::delete('folders/{id}', [FolderController::class, 'destroy'])->name('folders.destroy');
+    Route::post('folders', [FolderController::class, 'store'])->middleware('admin')->name('folders.store');
+    Route::delete('folders/{id}', [FolderController::class, 'destroy'])->middleware('admin')->name('folders.destroy');
 
     // Upload
-    Route::get('upload', [UploadController::class, 'create'])->name('upload.create');
-    Route::post('upload', [UploadController::class, 'store'])->name('upload.store');
+    Route::get('upload', [UploadController::class, 'create'])->middleware('admin')->name('upload.create');
+    Route::post('upload', [UploadController::class, 'store'])->middleware('admin')->name('upload.store');
 
     // Search
     Route::get('search', [SearchController::class, 'index'])->name('search.index');

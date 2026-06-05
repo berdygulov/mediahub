@@ -125,90 +125,89 @@ class FolderControllerTest extends TestCase
         $this->post(route('folders.store'), ['name' => 'Test'])->assertRedirect(route('login'));
     }
 
-    public function test_user_can_create_root_folder(): void
+    public function test_admin_can_create_root_folder(): void
     {
-        $user = User::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true]);
 
-        $this->actingAs($user)
+        $this->actingAs($admin)
             ->post(route('folders.store'), ['name' => 'My Videos'])
             ->assertRedirect();
 
         $this->assertDatabaseHas('folders', [
-            'user_id' => $user->id,
+            'user_id' => $admin->id,
             'parent_id' => null,
             'name' => 'My Videos',
         ]);
     }
 
-    public function test_user_can_create_subfolder(): void
+    public function test_admin_can_create_subfolder(): void
     {
-        $user = User::factory()->create();
-        $parent = Folder::factory()->for($user)->create();
+        $admin = User::factory()->create(['is_admin' => true]);
+        $parent = Folder::factory()->for($admin)->create();
 
-        $this->actingAs($user)
+        $this->actingAs($admin)
             ->post(route('folders.store'), ['name' => '2024', 'parent_id' => $parent->id])
             ->assertRedirect();
 
         $this->assertDatabaseHas('folders', [
-            'user_id' => $user->id,
+            'user_id' => $admin->id,
             'parent_id' => $parent->id,
             'name' => '2024',
         ]);
     }
 
-    public function test_user_cannot_create_subfolder_in_another_users_folder(): void
+    public function test_admin_cannot_create_subfolder_in_another_users_folder(): void
     {
-        $user = User::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true]);
         $other = User::factory()->create();
         $otherFolder = Folder::factory()->for($other)->create();
 
-        $this->actingAs($user)
-            ->post(route('folders.store'), ['name' => 'Hack', 'parent_id' => $otherFolder->id])
+        $this->actingAs($admin)
+            ->post(route('folders.store'), ['name' => 'Sub', 'parent_id' => $otherFolder->id])
             ->assertSessionHasErrors(['parent_id']);
     }
 
     public function test_folder_name_is_required(): void
     {
-        $user = User::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true]);
 
-        $this->actingAs($user)
+        $this->actingAs($admin)
             ->post(route('folders.store'), ['name' => ''])
             ->assertSessionHasErrors(['name']);
     }
 
     public function test_folder_name_cannot_exceed_255_characters(): void
     {
-        $user = User::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true]);
 
-        $this->actingAs($user)
+        $this->actingAs($admin)
             ->post(route('folders.store'), ['name' => str_repeat('a', 256)])
             ->assertSessionHasErrors(['name']);
     }
 
     // --- destroy ---
 
-    public function test_user_can_delete_own_folder(): void
+    public function test_non_admin_cannot_delete_folder(): void
     {
         $user = User::factory()->create();
         $folder = Folder::factory()->for($user)->create();
 
         $this->actingAs($user)
             ->delete(route('folders.destroy', $folder->id))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('folders', ['id' => $folder->id]);
+    }
+
+    public function test_admin_can_delete_own_folder(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $folder = Folder::factory()->for($admin)->create();
+
+        $this->actingAs($admin)
+            ->delete(route('folders.destroy', $folder->id))
             ->assertRedirect();
 
         $this->assertDatabaseMissing('folders', ['id' => $folder->id]);
-    }
-
-    public function test_user_cannot_delete_another_users_folder(): void
-    {
-        $owner = User::factory()->create();
-        $other = User::factory()->create();
-        $folder = Folder::factory()->for($owner)->create();
-
-        $this->actingAs($other)
-            ->delete(route('folders.destroy', $folder->id))
-            ->assertNotFound();
-
-        $this->assertDatabaseHas('folders', ['id' => $folder->id]);
     }
 }

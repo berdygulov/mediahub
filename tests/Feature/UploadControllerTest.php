@@ -20,69 +20,61 @@ class UploadControllerTest extends TestCase
         $response->assertRedirect(route('login'));
     }
 
-    public function test_authenticated_user_can_visit_upload_page(): void
+    public function test_admin_can_visit_upload_page(): void
     {
-        $user = User::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true]);
 
-        $response = $this->actingAs($user)->get(route('upload.create'));
-
-        $response->assertOk();
+        $this->actingAs($admin)->get(route('upload.create'))->assertOk();
     }
 
-    public function test_authenticated_user_can_upload_a_video_file(): void
+    public function test_admin_can_upload_a_video_file(): void
     {
         Storage::fake('local');
 
-        $user = User::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true]);
         $file = UploadedFile::fake()->create('video.mp4', 1024, 'video/mp4');
 
-        $response = $this->actingAs($user)->post(route('upload.store'), ['file' => $file]);
-
-        $response->assertRedirect();
+        $this->actingAs($admin)->post(route('upload.store'), ['file' => $file])->assertRedirect();
 
         $this->assertDatabaseHas('files', [
-            'user_id' => $user->id,
+            'user_id' => $admin->id,
             'name' => 'video.mp4',
             'disk' => 'local',
             'type' => 'video',
         ]);
 
-        $record = File::where('user_id', $user->id)->sole();
+        $record = File::where('user_id', $admin->id)->sole();
         Storage::disk('local')->assertExists($record->path);
     }
 
-    public function test_authenticated_user_can_upload_an_audio_file(): void
+    public function test_admin_can_upload_an_audio_file(): void
     {
         Storage::fake('local');
 
-        $user = User::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true]);
         $file = UploadedFile::fake()->create('audio.mp3', 512, 'audio/mpeg');
 
-        $response = $this->actingAs($user)->post(route('upload.store'), ['file' => $file]);
-
-        $response->assertRedirect();
+        $this->actingAs($admin)->post(route('upload.store'), ['file' => $file])->assertRedirect();
 
         $this->assertDatabaseHas('files', [
-            'user_id' => $user->id,
+            'user_id' => $admin->id,
             'name' => 'audio.mp3',
             'disk' => 'local',
             'type' => 'audio',
         ]);
     }
 
-    public function test_authenticated_user_can_upload_an_ogg_file(): void
+    public function test_admin_can_upload_an_ogg_file(): void
     {
         Storage::fake('local');
 
-        $user = User::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true]);
         $file = UploadedFile::fake()->create('audio.ogg', 512, 'audio/ogg');
 
-        $response = $this->actingAs($user)->post(route('upload.store'), ['file' => $file]);
-
-        $response->assertRedirect();
+        $this->actingAs($admin)->post(route('upload.store'), ['file' => $file])->assertRedirect();
 
         $this->assertDatabaseHas('files', [
-            'user_id' => $user->id,
+            'user_id' => $admin->id,
             'name' => 'audio.ogg',
             'disk' => 'local',
             'type' => 'audio',
@@ -91,73 +83,68 @@ class UploadControllerTest extends TestCase
 
     public function test_file_is_required(): void
     {
-        $user = User::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true]);
 
-        $response = $this->actingAs($user)
+        $this->actingAs($admin)
             ->withHeaders(['Accept' => 'application/json'])
-            ->post(route('upload.store'), []);
-
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['file']);
+            ->post(route('upload.store'), [])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['file']);
     }
 
     public function test_unsupported_file_type_is_rejected(): void
     {
-        $user = User::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true]);
         $file = UploadedFile::fake()->create('document.pdf', 100, 'application/pdf');
 
-        $response = $this->actingAs($user)
+        $this->actingAs($admin)
             ->withHeaders(['Accept' => 'application/json'])
-            ->post(route('upload.store'), ['file' => $file]);
-
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['file']);
+            ->post(route('upload.store'), ['file' => $file])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['file']);
     }
 
     public function test_file_exceeding_500mb_is_rejected(): void
     {
-        $user = User::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true]);
         $file = UploadedFile::fake()->create('video.mp4', 1, 'video/mp4')->size(501 * 1024);
 
-        $response = $this->actingAs($user)
+        $this->actingAs($admin)
             ->withHeaders(['Accept' => 'application/json'])
-            ->post(route('upload.store'), ['file' => $file]);
-
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['file']);
+            ->post(route('upload.store'), ['file' => $file])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['file']);
     }
 
-    public function test_file_is_stored_under_authenticated_user(): void
+    public function test_file_is_stored_under_uploading_admin(): void
     {
         Storage::fake('local');
 
-        $userA = User::factory()->create();
-        $userB = User::factory()->create();
+        $adminA = User::factory()->create(['is_admin' => true]);
+        $adminB = User::factory()->create(['is_admin' => true]);
         $file = UploadedFile::fake()->create('video.mp4', 1024, 'video/mp4');
 
-        $this->actingAs($userA)->post(route('upload.store'), ['file' => $file]);
+        $this->actingAs($adminA)->post(route('upload.store'), ['file' => $file]);
 
-        $this->assertDatabaseHas('files', ['user_id' => $userA->id]);
-        $this->assertDatabaseMissing('files', ['user_id' => $userB->id]);
+        $this->assertDatabaseHas('files', ['user_id' => $adminA->id]);
+        $this->assertDatabaseMissing('files', ['user_id' => $adminB->id]);
     }
 
     public function test_file_can_be_uploaded_into_a_folder(): void
     {
         Storage::fake('local');
 
-        $user = User::factory()->create();
-        $folder = Folder::factory()->create(['user_id' => $user->id]);
+        $admin = User::factory()->create(['is_admin' => true]);
+        $folder = Folder::factory()->create(['user_id' => $admin->id]);
         $file = UploadedFile::fake()->create('video.mp4', 1024, 'video/mp4');
 
-        $response = $this->actingAs($user)->post(route('upload.store'), [
+        $this->actingAs($admin)->post(route('upload.store'), [
             'file' => $file,
             'folder_id' => $folder->id,
-        ]);
-
-        $response->assertRedirect();
+        ])->assertRedirect();
 
         $this->assertDatabaseHas('files', [
-            'user_id' => $user->id,
+            'user_id' => $admin->id,
             'folder_id' => $folder->id,
             'name' => 'video.mp4',
         ]);
@@ -165,17 +152,16 @@ class UploadControllerTest extends TestCase
 
     public function test_invalid_folder_id_is_rejected(): void
     {
-        $user = User::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true]);
         $file = UploadedFile::fake()->create('video.mp4', 1024, 'video/mp4');
 
-        $response = $this->actingAs($user)
+        $this->actingAs($admin)
             ->withHeaders(['Accept' => 'application/json'])
             ->post(route('upload.store'), [
                 'file' => $file,
                 'folder_id' => 99999,
-            ]);
-
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['folder_id']);
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['folder_id']);
     }
 }

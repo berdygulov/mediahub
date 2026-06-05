@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
 import { ArrowLeft, Download, Pause, Play, Trash2, Volume2, VolumeX } from 'lucide-react';
 import Plyr from 'plyr';
@@ -539,6 +539,9 @@ function AudioPlayer({ streamUrl }: { streamUrl: string }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function FilesShow({ file, streamUrl, downloadUrl }: Props) {
+    const { auth } = usePage().props;
+    const isAdmin = auth.user.is_admin;
+
     const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
 
@@ -602,13 +605,15 @@ export default function FilesShow({ file, streamUrl, downloadUrl }: Props) {
                                     <Download className="size-3.5" />
                                     Скачать
                                 </a>
-                                <button
-                                    onClick={() => setShowDeleteDialog(true)}
-                                    className="border-destructive/30 text-destructive hover:bg-destructive/10 flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm"
-                                >
-                                    <Trash2 className="size-3.5" />
-                                    Удалить
-                                </button>
+                                {isAdmin && (
+                                    <button
+                                        onClick={() => setShowDeleteDialog(true)}
+                                        className="border-destructive/30 text-destructive hover:bg-destructive/10 flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm"
+                                    >
+                                        <Trash2 className="size-3.5" />
+                                        Удалить
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

@@ -239,7 +239,7 @@ class FileControllerTest extends TestCase
 
     // --- destroy ---
 
-    public function test_user_can_delete_own_file(): void
+    public function test_non_admin_cannot_delete_file(): void
     {
         Storage::fake('local');
 
@@ -247,23 +247,7 @@ class FileControllerTest extends TestCase
         $file = File::factory()->for($user)->create(['disk' => 'local', 'path' => 'media/test.mp4']);
         Storage::disk('local')->put('media/test.mp4', 'fake content');
 
-        $response = $this->actingAs($user)->delete(route('files.destroy', $file->id));
-
-        $response->assertRedirect(route('files.index'));
-        $this->assertDatabaseMissing('files', ['id' => $file->id]);
-        Storage::disk('local')->assertMissing('media/test.mp4');
-    }
-
-    public function test_user_cannot_delete_another_users_file(): void
-    {
-        Storage::fake('local');
-
-        $owner = User::factory()->create();
-        $other = User::factory()->create();
-        $file = File::factory()->for($owner)->create(['disk' => 'local', 'path' => 'media/test.mp4']);
-        Storage::disk('local')->put('media/test.mp4', 'fake content');
-
-        $this->actingAs($other)->delete(route('files.destroy', $file->id))->assertNotFound();
+        $this->actingAs($user)->delete(route('files.destroy', $file->id))->assertForbidden();
 
         $this->assertDatabaseHas('files', ['id' => $file->id]);
     }

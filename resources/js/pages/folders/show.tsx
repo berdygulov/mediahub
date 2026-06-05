@@ -8,7 +8,7 @@ import {
     getSortedRowModel,
     useReactTable,
 } from '@tanstack/react-table';
-import { Head, router, setLayoutProps, useForm } from '@inertiajs/react';
+import { Head, router, setLayoutProps, useForm, usePage } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
 import {
     AlertCircle,
@@ -135,6 +135,9 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
 }
 
 export default function FoldersShow({ folder, subfolders, files, ancestors }: Props) {
+    const { auth } = usePage().props;
+    const isAdmin = auth.user.is_admin;
+
     setLayoutProps({
         breadcrumbs: [
             { title: 'Главная', href: dashboard() },
@@ -403,29 +406,31 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                             <p className="text-xs text-muted-foreground">{folderMeta(folder)}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept={ACCEPTED_EXTENSIONS}
-                            multiple
-                            className="hidden"
-                            onChange={(e) => handleFilesSelected(e.target.files)}
-                        />
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 gap-1.5"
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            <Upload className="size-3.5" />
-                            <span className="hidden sm:inline">Загрузить файлы</span>
-                        </Button>
-                        <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
-                            <FolderPlus className="size-3.5" />
-                            <span className="hidden sm:inline">Новая подпапка</span>
-                        </Button>
-                    </div>
+                    {isAdmin && (
+                        <div className="flex items-center gap-2">
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept={ACCEPTED_EXTENSIONS}
+                                multiple
+                                className="hidden"
+                                onChange={(e) => handleFilesSelected(e.target.files)}
+                            />
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 gap-1.5"
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <Upload className="size-3.5" />
+                                <span className="hidden sm:inline">Загрузить файлы</span>
+                            </Button>
+                            <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
+                                <FolderPlus className="size-3.5" />
+                                <span className="hidden sm:inline">Новая подпапка</span>
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Toolbar */}
@@ -523,12 +528,14 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                                 <Folder className="text-muted-foreground size-5" />
                             </div>
                             <p className="text-sm font-medium">Папка пуста</p>
-                            <button
-                                className="text-primary text-xs underline underline-offset-4"
-                                onClick={openCreate}
-                            >
-                                Создать подпапку
-                            </button>
+                            {isAdmin && (
+                                <button
+                                    className="text-primary text-xs underline underline-offset-4"
+                                    onClick={openCreate}
+                                >
+                                    Создать подпапку
+                                </button>
+                            )}
                         </div>
                     ) : (
                         <>
