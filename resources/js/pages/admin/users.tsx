@@ -1,10 +1,12 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Form, Head, Link, router } from '@inertiajs/react';
 import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type { ColumnDef } from '@tanstack/react-table';
 import { format, parseISO } from 'date-fns';
-import { ArrowDown, ArrowUp, ArrowUpDown, FolderOpen, Pencil, Shield, Users } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, FolderOpen, Pencil, Plus, Shield, Users } from 'lucide-react';
 import * as React from 'react';
 
+import InputError from '@/components/input-error';
+import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -24,6 +26,7 @@ import * as filesRoute from '@/routes/files';
 interface UserRecord {
     id: number;
     name: string;
+    username: string | null;
     email: string;
     is_admin: boolean;
     created_at: string;
@@ -75,6 +78,7 @@ function SortIcon({ column, sort, order }: { column: string; sort: string; order
 
 export default function AdminUsers({ users, filters }: Props) {
     const [search, setSearch] = React.useState(filters.search);
+    const [isCreateOpen, setIsCreateOpen] = React.useState(false);
     const [userToEdit, setUserToEdit] = React.useState<UserRecord | null>(null);
     const [editIsAdmin, setEditIsAdmin] = React.useState(false);
     const [isUpdating, setIsUpdating] = React.useState(false);
@@ -156,6 +160,13 @@ export default function AdminUsers({ users, filters }: Props) {
                 </button>
             ),
             cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
+        },
+        {
+            accessorKey: 'username',
+            header: 'Username',
+            cell: ({ row }) => (
+                <span className="font-mono text-sm">{row.original.username ?? '—'}</span>
+            ),
         },
         {
             accessorKey: 'email',
@@ -257,6 +268,14 @@ export default function AdminUsers({ users, filters }: Props) {
                             Сбросить фильтры
                         </Button>
                     )}
+                    <Button
+                        size="sm"
+                        className="ml-auto h-8"
+                        onClick={() => setIsCreateOpen(true)}
+                    >
+                        <Plus className="mr-1 size-3.5" />
+                        Создать пользователя
+                    </Button>
                 </div>
 
                 {/* Table */}
@@ -284,6 +303,11 @@ export default function AdminUsers({ users, filters }: Props) {
                                                 <span className="truncate text-sm font-medium">
                                                     {user.name}
                                                 </span>
+                                                {user.username && (
+                                                    <span className="font-mono text-xs">
+                                                        {user.username}
+                                                    </span>
+                                                )}
                                                 <span className="text-muted-foreground truncate text-xs">
                                                     {user.email}
                                                 </span>
@@ -407,6 +431,115 @@ export default function AdminUsers({ users, filters }: Props) {
                     </div>
                 )}
             </div>
+
+            {/* Create user dialog */}
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Создать пользователя</DialogTitle>
+                        <DialogDescription>
+                            Заполните данные нового пользователя. Пароль задаётся администратором.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Form
+                        {...adminUsersRoute.store.form()}
+                        resetOnSuccess={true}
+                        onSuccess={() => setIsCreateOpen(false)}
+                        className="flex flex-col gap-4 py-2"
+                    >
+                        {({ processing, errors }) => (
+                            <>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="create-name">Имя</Label>
+                                    <Input
+                                        id="create-name"
+                                        name="name"
+                                        type="text"
+                                        required
+                                        autoComplete="off"
+                                        placeholder="Полное имя"
+                                    />
+                                    <InputError message={errors.name} />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="create-username">Имя пользователя</Label>
+                                    <Input
+                                        id="create-username"
+                                        name="username"
+                                        type="text"
+                                        required
+                                        autoComplete="off"
+                                        placeholder="username"
+                                    />
+                                    <InputError message={errors.username} />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="create-email">Email</Label>
+                                    <Input
+                                        id="create-email"
+                                        name="email"
+                                        type="email"
+                                        required
+                                        autoComplete="off"
+                                        placeholder="email@example.com"
+                                    />
+                                    <InputError message={errors.email} />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="create-password">Пароль</Label>
+                                    <PasswordInput
+                                        id="create-password"
+                                        name="password"
+                                        required
+                                        autoComplete="new-password"
+                                        placeholder="Пароль"
+                                    />
+                                    <InputError message={errors.password} />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="create-password-confirmation">Подтверждение пароля</Label>
+                                    <PasswordInput
+                                        id="create-password-confirmation"
+                                        name="password_confirmation"
+                                        required
+                                        autoComplete="new-password"
+                                        placeholder="Повторите пароль"
+                                    />
+                                    <InputError message={errors.password_confirmation} />
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <Checkbox id="create-is-admin" name="is_admin" value="1" />
+                                    <Label htmlFor="create-is-admin" className="flex flex-col gap-0.5">
+                                        <span>Права администратора</span>
+                                        <span className="text-muted-foreground text-xs font-normal">
+                                            Предоставляет полный доступ к панели управления
+                                        </span>
+                                    </Label>
+                                </div>
+
+                                <DialogFooter>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setIsCreateOpen(false)}
+                                        disabled={processing}
+                                    >
+                                        Отмена
+                                    </Button>
+                                    <Button type="submit" disabled={processing}>
+                                        {processing ? 'Создание…' : 'Создать'}
+                                    </Button>
+                                </DialogFooter>
+                            </>
+                        )}
+                    </Form>
+                </DialogContent>
+            </Dialog>
 
             {/* Edit user dialog */}
             <Dialog open={!!userToEdit} onOpenChange={(open) => !open && setUserToEdit(null)}>

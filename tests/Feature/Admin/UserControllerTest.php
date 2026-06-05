@@ -47,6 +47,7 @@ class UserControllerTest extends TestCase
 
         $this->assertArrayHasKey('id', $user);
         $this->assertArrayHasKey('name', $user);
+        $this->assertArrayHasKey('username', $user);
         $this->assertArrayHasKey('email', $user);
         $this->assertArrayHasKey('is_admin', $user);
         $this->assertArrayHasKey('created_at', $user);
@@ -175,6 +176,136 @@ class UserControllerTest extends TestCase
         $response->assertOk();
         $filters = $response->original->getData()['page']['props']['filters'];
         $this->assertSame('desc', $filters['order']);
+    }
+
+    // --- store ---
+
+    public function test_guests_cannot_create_user(): void
+    {
+        $this->post(route('admin.users.store'), [
+            'name' => 'New User',
+            'username' => 'newuser',
+            'email' => 'new@example.com',
+            'password' => 'Password1!',
+            'password_confirmation' => 'Password1!',
+        ])->assertRedirect(route('login'));
+    }
+
+    public function test_non_admin_cannot_create_user(): void
+    {
+        $user = User::factory()->create(['is_admin' => false]);
+
+        $this->actingAs($user)->post(route('admin.users.store'), [
+            'name' => 'New User',
+            'username' => 'newuser',
+            'email' => 'new@example.com',
+            'password' => 'Password1!',
+            'password_confirmation' => 'Password1!',
+        ])->assertForbidden();
+    }
+
+    public function test_admin_can_create_user(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)->post(route('admin.users.store'), [
+            'name' => 'New User',
+            'username' => 'newuser',
+            'email' => 'new@example.com',
+            'password' => 'Password1!',
+            'password_confirmation' => 'Password1!',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('users', [
+            'name' => 'New User',
+            'username' => 'newuser',
+            'email' => 'new@example.com',
+            'is_admin' => false,
+        ]);
+    }
+
+    public function test_admin_can_create_admin_user(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)->post(route('admin.users.store'), [
+            'name' => 'New Admin',
+            'username' => 'newadmin',
+            'email' => 'newadmin@example.com',
+            'password' => 'Password1!',
+            'password_confirmation' => 'Password1!',
+            'is_admin' => true,
+        ])->assertRedirect();
+
+        $this->assertTrue(
+            User::where('username', 'newadmin')->first()?->is_admin
+        );
+    }
+
+    public function test_create_user_is_auto_verified(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)->post(route('admin.users.store'), [
+            'name' => 'New User',
+            'username' => 'verifieduser',
+            'email' => 'verified@example.com',
+            'password' => 'Password1!',
+            'password_confirmation' => 'Password1!',
+        ]);
+
+        $this->assertNotNull(
+            User::where('username', 'verifieduser')->first()?->email_verified_at
+        );
+    }
+
+    public function test_create_user_requires_all_fields(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)->post(route('admin.users.store'), [])
+            ->assertSessionHasErrors(['name', 'username', 'email', 'password']);
+    }
+
+    public function test_create_user_requires_unique_username(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        User::factory()->create(['username' => 'taken']);
+
+        $this->actingAs($admin)->post(route('admin.users.store'), [
+            'name' => 'New User',
+            'username' => 'taken',
+            'email' => 'new@example.com',
+            'password' => 'Password1!',
+            'password_confirmation' => 'Password1!',
+        ])->assertSessionHasErrors('username');
+    }
+
+    public function test_create_user_requires_unique_email(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        User::factory()->create(['email' => 'taken@example.com']);
+
+        $this->actingAs($admin)->post(route('admin.users.store'), [
+            'name' => 'New User',
+            'username' => 'newuser',
+            'email' => 'taken@example.com',
+            'password' => 'Password1!',
+            'password_confirmation' => 'Password1!',
+        ])->assertSessionHasErrors('email');
+    }
+
+    public function test_create_user_username_must_match_pattern(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)->post(route('admin.users.store'), [
+            'name' => 'New User',
+            'username' => 'invalid username!',
+            'email' => 'new@example.com',
+            'password' => 'Password1!',
+            'password_confirmation' => 'Password1!',
+        ])->assertSessionHasErrors('username');
     }
 
     // --- update ---

@@ -41,6 +41,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // Admin
 Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
+    Route::post('users', [AdminUserController::class, 'store'])->name('users.store');
     Route::patch('users/{id}', [AdminUserController::class, 'update'])->name('users.update');
     Route::delete('users/{id}', [AdminUserController::class, 'destroy'])->name('users.destroy');
     Route::get('logs', [AdminLogController::class, 'index'])->name('logs.index');

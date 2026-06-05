@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Concerns\PasswordValidationRules;
+use App\Concerns\ProfileValidationRules;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -11,6 +13,8 @@ use Inertia\Response;
 
 class UserController extends Controller
 {
+    use PasswordValidationRules, ProfileValidationRules;
+
     public function index(Request $request): Response
     {
         $search = $request->string('search')->trim()->value();
@@ -26,7 +30,7 @@ class UserController extends Controller
         }
 
         $users = User::query()
-            ->select(['id', 'name', 'email', 'is_admin', 'created_at'])
+            ->select(['id', 'name', 'username', 'email', 'is_admin', 'created_at'])
             ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
@@ -43,6 +47,29 @@ class UserController extends Controller
                 'order' => $order,
             ],
         ]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            ...$this->profileRules(),
+            'username' => $this->usernameRules(),
+            'password' => $this->passwordRules(),
+            'is_admin' => ['boolean'],
+        ]);
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'username' => $validated['username'],
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+            'is_admin' => $validated['is_admin'] ?? false,
+        ]);
+
+        $user->email_verified_at = now();
+        $user->save();
+
+        return back();
     }
 
     public function update(Request $request, int $id): RedirectResponse
