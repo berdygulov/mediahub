@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useMediaPlayer } from '@/contexts/media-player-context';
 import { formatBytes } from '@/lib/utils';
 
-export function MediaPlayerPanel() {
+    export function MediaPlayerPanel() {
     const { currentMedia, isOpen, close } = useMediaPlayer();
 
     if (!isOpen || !currentMedia) {
@@ -15,18 +15,24 @@ export function MediaPlayerPanel() {
     }
 
     return (
-        <div className="animate-in slide-in-from-bottom sticky bottom-0 z-10 border-t bg-background shadow-lg duration-300 p-4 lg:p-6 flex flex-col gap-4">
-            <p className="text-muted-foreground text-xs font-medium tracking-wide">
-                Сейчас воспроизводится
-            </p>
+        <div className="animate-in slide-in-from-bottom sticky bottom-0 z-10 border-t-2 border-t-primary bg-background shadow-lg duration-300 p-4 lg:p-6 flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+                <span className="relative flex size-2.5 shrink-0">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                    <span className="relative inline-flex size-2.5 rounded-full bg-primary" />
+                </span>
+                <p className="text-primary text-xs font-semibold uppercase tracking-wide">
+                    Сейчас воспроизводится
+                </p>
+            </div>
             <div className={`grid grid-cols-2 gap-4 ${currentMedia.type === 'video' ? 'lg:flex' : ''}`}>
                 {currentMedia.type === 'video' ? (
-                    <div className="col-span-2 xl:col-span-1 overflow-hidden rounded-lg">
+                    <div className="col-span-2 xl:col-span-1 overflow-hidden rounded-lg shrink-0">
                         <VideoPlayer
                             key={currentMedia.id}
                             streamUrl={currentMedia.streamUrl}
                             mimeType={currentMedia.mime_type}
-                            className="w-full max-w-lg"
+                            className="w-full max-w-md"
                         />
                     </div>
                 ) : (
@@ -35,7 +41,7 @@ export function MediaPlayerPanel() {
                     </div>
                 )}
 
-                <div className="col-span-2 xl:col-span-1 flex flex-col gap-1.5">
+                <div className="col-span-2 xl:col-span-1 flex flex-col gap-1.5 shrink min-w-0">
                     <div className="flex items-center gap-2">
                         {currentMedia.type === 'video' ? (
                             <Film className="size-4 shrink-0 text-blue-500" />
@@ -43,8 +49,8 @@ export function MediaPlayerPanel() {
                             <Music className="size-4 shrink-0 text-purple-500" />
                         )}
                         <span className="text-foreground truncate text-base font-medium">
-                        {currentMedia.name}
-                    </span>
+                            {currentMedia.name}
+                        </span>
                     </div>
 
                     <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
