@@ -8,7 +8,6 @@ import {
     ArrowUpDown,
     Check,
     ChevronDown,
-    ChevronRight,
     Download,
     Eye,
     Film,
@@ -23,7 +22,7 @@ import * as React from 'react';
 import type { DateRange } from 'react-day-picker';
 
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { buildTree, FlatFolder, FolderNodeItem, getAncestorIds } from '@/components/folder-node-item';
 import { useMediaPlayer } from '@/contexts/media-player-context';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -109,111 +108,6 @@ interface Props {
     filters: Filters;
     users: UserOption[];
 }
-
-interface FlatFolder {
-    id: number;
-    name: string;
-    parent_id: number | null;
-}
-
-interface FolderNode extends FlatFolder {
-    children: FolderNode[];
-}
-
-function buildTree(folders: FlatFolder[]): FolderNode[] {
-    const map = new Map<number, FolderNode>();
-    const roots: FolderNode[] = [];
-
-    for (const f of folders) {
-        map.set(f.id, { ...f, children: [] });
-    }
-
-    for (const f of folders) {
-        const node = map.get(f.id)!;
-
-        if (f.parent_id === null) {
-            roots.push(node);
-        } else {
-            map.get(f.parent_id)?.children.push(node);
-        }
-    }
-
-    return roots;
-}
-
-function getAncestorIds(folders: FlatFolder[], folderId: number | null): Set<number> {
-    if (folderId === null) {
-        return new Set();
-    }
-
-    const map = new Map(folders.map((f) => [f.id, f]));
-    const ancestors = new Set<number>();
-    let current = map.get(folderId);
-
-    while (current?.parent_id != null) {
-        ancestors.add(current.parent_id);
-        current = map.get(current.parent_id);
-    }
-
-    return ancestors;
-}
-
-function FolderNodeItem({
-    node,
-    selectedId,
-    onSelect,
-    openIds,
-}: {
-    node: FolderNode;
-    selectedId: number | null;
-    onSelect: (id: number | null) => void;
-    openIds: Set<number>;
-}) {
-    const hasChildren = node.children.length > 0;
-
-    return (
-        <Collapsible defaultOpen={openIds.has(node.id)}>
-            <div className="flex items-center gap-0.5">
-                {hasChildren ? (
-                    <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="icon" className="size-6 shrink-0">
-                            <ChevronRight className="size-3 transition-transform duration-150 [[data-state=open]_&]:rotate-90" />
-                        </Button>
-                    </CollapsibleTrigger>
-                ) : (
-                    <span className="size-6 shrink-0" />
-                )}
-                <button
-                    type="button"
-                    className={cn(
-                        'flex flex-1 items-center gap-1.5 rounded px-2 py-1 text-sm transition-colors hover:bg-accent',
-                        selectedId === node.id && 'bg-accent font-medium',
-                    )}
-                    onClick={() => onSelect(node.id)}
-                >
-                    <Folder className="size-3.5 shrink-0 text-muted-foreground" />
-                    {node.name}
-                </button>
-            </div>
-            {hasChildren && (
-                <CollapsibleContent>
-                    <div className="ml-6 border-l pl-1">
-                        {node.children.map((child) => (
-                            <FolderNodeItem
-                                key={child.id}
-                                node={child}
-                                selectedId={selectedId}
-                                onSelect={onSelect}
-                                openIds={openIds}
-                            />
-                        ))}
-                    </div>
-                </CollapsibleContent>
-            )}
-        </Collapsible>
-    );
-}
-
 
 function decodePaginationLabel(label: string): string {
     return label.replace('&laquo;', '«').replace('&raquo;', '»');

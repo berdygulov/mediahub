@@ -8,7 +8,7 @@ import {
     getSortedRowModel,
     useReactTable,
 } from '@tanstack/react-table';
-import { Head, router, setLayoutProps, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, setLayoutProps, useForm, usePage } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
 import {
     AlertCircle,
@@ -17,19 +17,27 @@ import {
     ArrowUpDown,
     CheckCircle2,
     Clock,
+    Download,
+    Eye,
     Film,
     Folder,
+    FolderInput,
     FolderPlus,
     Music,
+    Play,
+    Trash2,
     Upload,
 } from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { buildTree, FlatFolder, FolderNodeItem, getAncestorIds } from '@/components/folder-node-item';
+import { useMediaPlayer } from '@/contexts/media-player-context';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -44,7 +52,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { formatBytes } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn, formatBytes } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import * as filesRoute from '@/routes/files';
 import * as foldersRoute from '@/routes/folders';
@@ -103,6 +112,7 @@ interface TableRow {
     displayType: string;
     size: number | null;
     media_type: 'video' | 'audio' | null;
+    mime_type: string | null;
     href: string;
 }
 
@@ -137,6 +147,7 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
 export default function FoldersShow({ folder, subfolders, files, ancestors }: Props) {
     const { auth } = usePage().props;
     const isAdmin = auth.user.is_admin;
+    const { play } = useMediaPlayer();
 
     setLayoutProps({
         breadcrumbs: [
@@ -242,6 +253,45 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
 
     const completedUploadCount = uploadQueue.filter((q) => q.status === 'done' || q.status === 'error').length;
 
+    const [fileToDelete, setFileToDelete] = React.useState<FileItem | null>(null);
+    const [isDeleting, setIsDeleting] = React.useState(false);
+
+    const [fileToMove, setFileToMove] = React.useState<FileItem | null>(null);
+    const [foldersList, setFoldersList] = React.useState<FlatFolder[]>([]);
+    const [foldersLoading, setFoldersLoading] = React.useState(false);
+    const [selectedFolderId, setSelectedFolderId] = React.useState<number | null>(null);
+    const [isMoving, setIsMoving] = React.useState(false);
+
+    React.useEffect(() => {
+        if (!fileToMove) {
+            return;
+        }
+
+        setSelectedFolderId(folder.id);
+        setFoldersList([]);
+        setFoldersLoading(true);
+
+        const controller = new AbortController();
+
+        fetch(filesRoute.folders(fileToMove.id).url, {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+            signal: controller.signal,
+        })
+            .then((r) => r.json())
+            .then((data: FlatFolder[]) => {
+                setFoldersList(data);
+                setFoldersLoading(false);
+            })
+            .catch((err: unknown) => {
+                if ((err as { name?: string }).name !== 'AbortError') {
+                    setFoldersLoading(false);
+                }
+            });
+
+        return () => controller.abort();
+    }, [fileToMove]);
+
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
 
@@ -256,6 +306,7 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                     displayType: 'Папка',
                     size: null,
                     media_type: null,
+                    mime_type: null,
                     href: foldersRoute.show(f.id).url,
                 }),
             ),
@@ -268,6 +319,7 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                     displayType: f.mime_type,
                     size: f.size,
                     media_type: f.type,
+                    mime_type: f.mime_type,
                     href: filesRoute.show(f.id).url,
                 }),
             ),
@@ -353,8 +405,70 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                 },
                 sortingFn: (a, b) => (a.original.size ?? -1) - (b.original.size ?? -1),
             },
+            {
+                id: 'actions',
+                header: '',
+                cell: ({ row }) => {
+                    const r = row.original;
+                    if (r.kind !== 'file' || !r.media_type || !r.mime_type) return null;
+                    return (
+                        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-7"
+                                title="Воспроизвести"
+                                onClick={() =>
+                                    play({
+                                        id: r.id,
+                                        name: r.name,
+                                        type: r.media_type!,
+                                        mime_type: r.mime_type!,
+                                        size: r.size!,
+                                        created_at: r.created_at,
+                                        folder: { name: folder.name },
+                                        streamUrl: filesRoute.stream(r.id).url,
+                                    })
+                                }
+                            >
+                                <Play className="size-3.5" />
+                            </Button>
+                            <Link href={filesRoute.show(r.id).url}>
+                                <Button variant="ghost" size="icon" className="size-7" title="Просмотр">
+                                    <Eye className="size-3.5" />
+                                </Button>
+                            </Link>
+                            <a href={filesRoute.download(r.id).url}>
+                                <Button variant="ghost" size="icon" className="size-7" title="Скачать">
+                                    <Download className="size-3.5" />
+                                </Button>
+                            </a>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-7"
+                                title="Переместить в папку"
+                                onClick={() => setFileToMove(files.find((f) => f.id === r.id) ?? null)}
+                            >
+                                <FolderInput className="size-3.5" />
+                            </Button>
+                            {isAdmin && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-destructive hover:text-destructive size-7"
+                                    title="Удалить"
+                                    onClick={() => setFileToDelete(files.find((f) => f.id === r.id) ?? null)}
+                                >
+                                    <Trash2 className="size-3.5" />
+                                </Button>
+                            )}
+                        </div>
+                    );
+                },
+            },
         ],
-        [],
+        [folder.name, play, isAdmin, files],
     );
 
     const table = useReactTable({
@@ -371,6 +485,46 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
     });
+
+    const folderTree = React.useMemo(() => buildTree(foldersList), [foldersList]);
+    const ancestorIds = React.useMemo(
+        () => getAncestorIds(foldersList, folder.id),
+        [foldersList, folder.id],
+    );
+    const isMoveUnchanged = selectedFolderId === folder.id;
+
+    function handleDelete() {
+        if (!fileToDelete) {
+            return;
+        }
+
+        setIsDeleting(true);
+        router.delete(filesRoute.destroy(fileToDelete.id).url, {
+            preserveScroll: true,
+            onFinish: () => {
+                setIsDeleting(false);
+                setFileToDelete(null);
+            },
+        });
+    }
+
+    function handleMoveFolder() {
+        if (!fileToMove) {
+            return;
+        }
+
+        setIsMoving(true);
+        router.patch(
+            filesRoute.moveFolder(fileToMove.id).url,
+            { folder_id: selectedFolderId },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => setFileToMove(null),
+                onFinish: () => setIsMoving(false),
+            },
+        );
+    }
 
     function handleCreate(e: React.FormEvent) {
         e.preventDefault();
@@ -571,6 +725,60 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                                                         </span>
                                                     </div>
                                                 </div>
+                                                {item.kind === 'file' && item.media_type && item.mime_type && (
+                                                    <div className="flex shrink-0 items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="size-7"
+                                                            title="Воспроизвести"
+                                                            onClick={() =>
+                                                                play({
+                                                                    id: item.id,
+                                                                    name: item.name,
+                                                                    type: item.media_type!,
+                                                                    mime_type: item.mime_type!,
+                                                                    size: item.size!,
+                                                                    created_at: item.created_at,
+                                                                    folder: { name: folder.name },
+                                                                    streamUrl: filesRoute.stream(item.id).url,
+                                                                })
+                                                            }
+                                                        >
+                                                            <Play className="size-3.5" />
+                                                        </Button>
+                                                        <Link href={filesRoute.show(item.id).url}>
+                                                            <Button variant="ghost" size="icon" className="size-7" title="Просмотр">
+                                                                <Eye className="size-3.5" />
+                                                            </Button>
+                                                        </Link>
+                                                        <a href={filesRoute.download(item.id).url}>
+                                                            <Button variant="ghost" size="icon" className="size-7" title="Скачать">
+                                                                <Download className="size-3.5" />
+                                                            </Button>
+                                                        </a>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="size-7"
+                                                            title="Переместить в папку"
+                                                            onClick={() => setFileToMove(files.find((f) => f.id === item.id) ?? null)}
+                                                        >
+                                                            <FolderInput className="size-3.5" />
+                                                        </Button>
+                                                        {isAdmin && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="text-destructive hover:text-destructive size-7"
+                                                                title="Удалить"
+                                                                onClick={() => setFileToDelete(files.find((f) => f.id === item.id) ?? null)}
+                                                            >
+                                                                <Trash2 className="size-3.5" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })
@@ -632,6 +840,90 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                     )}
                 </div>
             </div>
+
+            {/* Delete confirmation dialog */}
+            <Dialog open={!!fileToDelete} onOpenChange={(open) => !open && setFileToDelete(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Удалить файл</DialogTitle>
+                        <DialogDescription>
+                            Вы уверены, что хотите удалить{' '}
+                            <span className="text-foreground font-medium">{fileToDelete?.name}</span>?
+                            Это действие необратимо.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setFileToDelete(null)} disabled={isDeleting}>
+                            Отмена
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+                            {isDeleting ? 'Удаление…' : 'Удалить'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Move to folder dialog */}
+            <Dialog open={!!fileToMove} onOpenChange={(open) => !open && setFileToMove(null)}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Переместить в папку</DialogTitle>
+                        <DialogDescription>
+                            Выберите папку для{' '}
+                            <span className="text-foreground font-medium">{fileToMove?.name}</span>.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex flex-col gap-1">
+                        <button
+                            type="button"
+                            className={cn(
+                                'flex items-center gap-1.5 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent',
+                                selectedFolderId === null && 'bg-accent font-medium',
+                            )}
+                            onClick={() => setSelectedFolderId(null)}
+                        >
+                            <Folder className="size-3.5 shrink-0 text-muted-foreground" />
+                            Без папки
+                        </button>
+
+                        <div className="my-1 border-t" />
+
+                        <div className="max-h-64 overflow-y-auto">
+                            {foldersLoading ? (
+                                <div className="flex flex-col gap-1 px-2">
+                                    {[1, 2, 3].map((i) => (
+                                        <Skeleton key={i} className="h-7 w-full rounded" />
+                                    ))}
+                                </div>
+                            ) : folderTree.length === 0 ? (
+                                <p className="text-muted-foreground px-2 py-3 text-center text-sm">
+                                    Папок пока нет
+                                </p>
+                            ) : (
+                                folderTree.map((node) => (
+                                    <FolderNodeItem
+                                        key={node.id}
+                                        node={node}
+                                        selectedId={selectedFolderId}
+                                        onSelect={setSelectedFolderId}
+                                        openIds={ancestorIds}
+                                    />
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setFileToMove(null)} disabled={isMoving}>
+                            Отмена
+                        </Button>
+                        <Button onClick={handleMoveFolder} disabled={isMoving || isMoveUnchanged}>
+                            {isMoving ? 'Перемещение…' : 'Переместить'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Create subfolder dialog */}
             <Dialog
