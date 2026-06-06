@@ -41,7 +41,7 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user()?->only([
-                    'id', 'name', 'email', 'is_admin',
+                    'id', 'name', 'username', 'email', 'is_admin',
                     'email_verified_at', 'two_factor_enabled', 'created_at', 'updated_at',
                 ]),
             ],

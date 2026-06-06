@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { HardDrive, LayoutGrid, ScrollText, Search, Settings, Shield, Upload } from 'lucide-react';
+import { FolderOpen, HardDrive, LayoutGrid, ScrollText, Search, Settings, Shield, Upload } from 'lucide-react';
 
 import AppLogo from '@/components/app-logo';
 import { NavFolders } from '@/components/nav-folders';
@@ -21,6 +21,7 @@ import { dashboard } from '@/routes';
 import { index as adminLogsIndex } from '@/routes/admin/logs';
 import { index as adminSettingsIndex } from '@/routes/admin/settings';
 import { index as adminUsersIndex } from '@/routes/admin/users';
+import { index as availableFilesIndex } from '@/routes/available-files';
 import { index as filesIndex } from '@/routes/files';
 import { index as searchIndex } from '@/routes/search';
 import { create as uploadCreate } from '@/routes/upload';
@@ -87,6 +88,20 @@ export function AppSidebar() {
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
+                        {!isAdmin && (
+                            <SidebarMenuItem>
+                                <SidebarMenuButton
+                                    asChild
+                                    isActive={isCurrentUrl(availableFilesIndex())}
+                                    tooltip={{ children: 'Доступные файлы' }}
+                                >
+                                    <Link href={availableFilesIndex()} prefetch>
+                                        <FolderOpen />
+                                        <span>Доступные файлы</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        )}
                         <NavFolders />
                         <SidebarMenuItem>
                             <SidebarMenuButton asChild isActive={isCurrentUrl(searchIndex())} tooltip={{ children: 'Поиск' }}>

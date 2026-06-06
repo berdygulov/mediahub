@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Controllers\Admin\FileAccessController as AdminFileAccessController;
 use App\Http\Controllers\Admin\LogController as AdminLogController;
 use App\Http\Controllers\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\AvailableFileController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FileCommentController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\FolderController;
 use App\Http\Controllers\SearchController;
@@ -23,6 +26,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('files/{id}/folders', [FileController::class, 'folderTree'])->name('files.folders');
     Route::patch('files/{id}/folder', [FileController::class, 'moveFolder'])->name('files.move-folder');
     Route::delete('files/{id}', [FileController::class, 'destroy'])->middleware('admin')->name('files.destroy');
+    Route::post('files/{fileId}/comments', [FileCommentController::class, 'store'])->name('file-comments.store');
+    Route::delete('files/{fileId}/comments/{commentId}', [FileCommentController::class, 'destroy'])->name('file-comments.destroy');
 
     // Folders
     Route::get('folders', [FolderController::class, 'index'])->name('folders.index');
@@ -33,6 +38,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Upload
     Route::get('upload', [UploadController::class, 'create'])->middleware('admin')->name('upload.create');
     Route::post('upload', [UploadController::class, 'store'])->middleware('admin')->name('upload.store');
+
+    // Available files (granted access)
+    Route::get('available-files', [AvailableFileController::class, 'index'])->name('available-files.index');
 
     // Search
     Route::get('search', [SearchController::class, 'index'])->name('search.index');
@@ -47,6 +55,8 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     Route::get('logs', [AdminLogController::class, 'index'])->name('logs.index');
     Route::get('settings', [AdminSettingController::class, 'index'])->name('settings.index');
     Route::patch('settings', [AdminSettingController::class, 'update'])->name('settings.update');
+    Route::post('files/{fileId}/accesses', [AdminFileAccessController::class, 'store'])->name('file-accesses.store');
+    Route::delete('files/{fileId}/accesses/{userId}', [AdminFileAccessController::class, 'destroy'])->name('file-accesses.destroy');
 });
 
 require __DIR__.'/settings.php';

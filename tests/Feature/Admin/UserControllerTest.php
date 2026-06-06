@@ -33,12 +33,13 @@ class UserControllerTest extends TestCase
 
         $response->assertOk();
         $data = $response->original->getData()['page']['props']['users']['data'];
-        $this->assertCount(4, $data);
+        $this->assertCount(3, $data);
     }
 
     public function test_index_returns_required_user_fields(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
+        $other = User::factory()->create();
 
         $response = $this->actingAs($admin)->get(route('admin.users.index'));
 
@@ -330,34 +331,73 @@ class UserControllerTest extends TestCase
 
     public function test_admin_can_grant_admin_role(): void
     {
-        $admin = User::factory()->create(['is_admin' => true]);
-        $target = User::factory()->create(['is_admin' => false]);
+        $admin = User::factory()->create(['is_admin' => true, 'username' => 'admin_user', 'email' => 'admin@test.com']);
+        $target = User::factory()->create(['is_admin' => false, 'username' => 'target_user', 'email' => 'target@test.com']);
 
-        $this->actingAs($admin)
-            ->patch(route('admin.users.update', $target->id), ['is_admin' => true]);
+        $this->actingAs($admin)->patch(route('admin.users.update', $target->id), [
+            'name' => $target->name,
+            'username' => 'target_user',
+            'email' => 'target@test.com',
+            'is_admin' => true,
+        ]);
 
         $this->assertTrue($target->fresh()->is_admin);
     }
 
     public function test_admin_can_revoke_admin_role(): void
     {
-        $admin = User::factory()->create(['is_admin' => true]);
-        $target = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->create(['is_admin' => true, 'username' => 'admin_user', 'email' => 'admin@test.com']);
+        $target = User::factory()->create(['is_admin' => true, 'username' => 'target_user', 'email' => 'target@test.com']);
 
-        $this->actingAs($admin)
-            ->patch(route('admin.users.update', $target->id), ['is_admin' => false]);
+        $this->actingAs($admin)->patch(route('admin.users.update', $target->id), [
+            'name' => $target->name,
+            'username' => 'target_user',
+            'email' => 'target@test.com',
+            'is_admin' => false,
+        ]);
 
         $this->assertFalse($target->fresh()->is_admin);
     }
 
-    public function test_update_requires_is_admin_field(): void
+    public function test_update_requires_name_email_username_fields(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
         $target = User::factory()->create();
 
         $this->actingAs($admin)
             ->patch(route('admin.users.update', $target->id), [])
-            ->assertSessionHasErrors('is_admin');
+            ->assertSessionHasErrors(['name', 'email', 'username']);
+    }
+
+    public function test_admin_can_update_user_password(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true, 'username' => 'admin_user', 'email' => 'admin@test.com']);
+        $target = User::factory()->create(['username' => 'target_user', 'email' => 'target@test.com']);
+
+        $this->actingAs($admin)->patch(route('admin.users.update', $target->id), [
+            'name' => $target->name,
+            'username' => 'target_user',
+            'email' => 'target@test.com',
+            'password' => 'NewPass123!',
+            'password_confirmation' => 'NewPass123!',
+        ]);
+
+        $this->assertTrue(password_verify('NewPass123!', $target->fresh()->password));
+    }
+
+    public function test_update_password_requires_confirmation(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true, 'username' => 'admin_user', 'email' => 'admin@test.com']);
+        $target = User::factory()->create(['username' => 'target_user', 'email' => 'target@test.com']);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.users.update', $target->id), [
+                'name' => $target->name,
+                'username' => 'target_user',
+                'email' => 'target@test.com',
+                'password' => 'NewPass123!',
+            ])
+            ->assertSessionHasErrors('password');
     }
 
     public function test_update_returns_404_for_missing_user(): void

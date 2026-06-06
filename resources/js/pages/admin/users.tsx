@@ -2,7 +2,7 @@ import { Form, Head, Link, router } from '@inertiajs/react';
 import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type { ColumnDef } from '@tanstack/react-table';
 import { format, parseISO } from 'date-fns';
-import { ArrowDown, ArrowUp, ArrowUpDown, FolderOpen, Pencil, Plus, Shield, Users } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, Shield, Users } from 'lucide-react';
 import * as React from 'react';
 
 import InputError from '@/components/input-error';
@@ -21,7 +21,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { dashboard } from '@/routes';
 import * as adminUsersRoute from '@/routes/admin/users';
-import * as filesRoute from '@/routes/files';
 
 interface UserRecord {
     id: number;
@@ -80,8 +79,6 @@ export default function AdminUsers({ users, filters }: Props) {
     const [search, setSearch] = React.useState(filters.search);
     const [isCreateOpen, setIsCreateOpen] = React.useState(false);
     const [userToEdit, setUserToEdit] = React.useState<UserRecord | null>(null);
-    const [editIsAdmin, setEditIsAdmin] = React.useState(false);
-    const [isUpdating, setIsUpdating] = React.useState(false);
 
     const searchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const searchRef = React.useRef(search);
@@ -124,28 +121,6 @@ export default function AdminUsers({ users, filters }: Props) {
         setSearch('');
         searchRef.current = '';
         router.get(adminUsersRoute.index.url(), {}, { preserveState: true, replace: true });
-    }
-
-    function openEditDialog(user: UserRecord) {
-        setEditIsAdmin(user.is_admin);
-        setUserToEdit(user);
-    }
-
-    function handleUpdate() {
-        if (!userToEdit) {
-            return;
-        }
-
-        setIsUpdating(true);
-        router.patch(
-            adminUsersRoute.update(userToEdit.id).url,
-            { is_admin: editIsAdmin },
-            {
-                preserveScroll: true,
-                onSuccess: () => setUserToEdit(null),
-                onFinish: () => setIsUpdating(false),
-            },
-        );
     }
 
     const columns: ColumnDef<UserRecord>[] = [
@@ -215,22 +190,10 @@ export default function AdminUsers({ users, filters }: Props) {
                         size="icon"
                         className="size-7"
                         title="Редактировать пользователя"
-                        onClick={() => openEditDialog(row.original)}
+                        onClick={() => setUserToEdit(row.original)}
                     >
                         <Pencil className="size-3.5" />
                     </Button>
-                    <Link
-                        href={filesRoute.index.url({ query: { owner_id: row.original.id } })}
-                    >
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-7"
-                            title="Просмотреть файлы и папки"
-                        >
-                            <FolderOpen className="size-3.5" />
-                        </Button>
-                    </Link>
                 </div>
             ),
         },
@@ -318,24 +281,10 @@ export default function AdminUsers({ users, filters }: Props) {
                                                     size="icon"
                                                     className="size-7"
                                                     title="Редактировать пользователя"
-                                                    onClick={() => openEditDialog(user)}
+                                                    onClick={() => setUserToEdit(user)}
                                                 >
                                                     <Pencil className="size-3.5" />
                                                 </Button>
-                                                <Link
-                                                    href={filesRoute.index.url({
-                                                        query: { owner_id: user.id },
-                                                    })}
-                                                >
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="size-7"
-                                                        title="Просмотреть файлы и папки"
-                                                    >
-                                                        <FolderOpen className="size-3.5" />
-                                                    </Button>
-                                                </Link>
                                             </div>
                                         </div>
                                         <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -547,38 +496,114 @@ export default function AdminUsers({ users, filters }: Props) {
                     <DialogHeader>
                         <DialogTitle>Редактировать пользователя</DialogTitle>
                         <DialogDescription>
-                            Изменение прав для{' '}
-                            <span className="text-foreground font-medium">
-                                {userToEdit?.name}
-                            </span>
-                            .
+                            Редактирование данных пользователя{' '}
+                            <span className="text-foreground font-medium">{userToEdit?.name}</span>.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="flex items-center gap-3 py-2">
-                        <Checkbox
-                            id="edit-is-admin"
-                            checked={editIsAdmin}
-                            onCheckedChange={(checked) => setEditIsAdmin(Boolean(checked))}
-                        />
-                        <Label htmlFor="edit-is-admin" className="flex flex-col gap-0.5">
-                            <span>Права администратора</span>
-                            <span className="text-muted-foreground text-xs font-normal">
-                                Предоставляет полный доступ к панели управления
-                            </span>
-                        </Label>
-                    </div>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setUserToEdit(null)}
-                            disabled={isUpdating}
+                    {userToEdit && (
+                        <Form
+                            key={userToEdit.id}
+                            {...adminUsersRoute.update.form(userToEdit.id)}
+                            onSuccess={() => setUserToEdit(null)}
+                            className="flex flex-col gap-4 py-2"
                         >
-                            Отмена
-                        </Button>
-                        <Button onClick={handleUpdate} disabled={isUpdating}>
-                            {isUpdating ? 'Сохранение…' : 'Сохранить'}
-                        </Button>
-                    </DialogFooter>
+                            {({ processing, errors }) => (
+                                <>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="edit-name">Имя</Label>
+                                        <Input
+                                            id="edit-name"
+                                            name="name"
+                                            type="text"
+                                            required
+                                            autoComplete="off"
+                                            defaultValue={userToEdit.name}
+                                        />
+                                        <InputError message={errors.name} />
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="edit-username">Имя пользователя</Label>
+                                        <Input
+                                            id="edit-username"
+                                            name="username"
+                                            type="text"
+                                            required
+                                            autoComplete="off"
+                                            defaultValue={userToEdit.username ?? ''}
+                                        />
+                                        <InputError message={errors.username} />
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="edit-email">Email</Label>
+                                        <Input
+                                            id="edit-email"
+                                            name="email"
+                                            type="email"
+                                            required
+                                            autoComplete="off"
+                                            defaultValue={userToEdit.email}
+                                        />
+                                        <InputError message={errors.email} />
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="edit-password">Новый пароль</Label>
+                                        <PasswordInput
+                                            id="edit-password"
+                                            name="password"
+                                            autoComplete="new-password"
+                                            placeholder="Оставьте пустым, чтобы не менять"
+                                        />
+                                        <InputError message={errors.password} />
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="edit-password-confirmation">
+                                            Подтверждение пароля
+                                        </Label>
+                                        <PasswordInput
+                                            id="edit-password-confirmation"
+                                            name="password_confirmation"
+                                            autoComplete="new-password"
+                                            placeholder="Повторите новый пароль"
+                                        />
+                                        <InputError message={errors.password_confirmation} />
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                        <Checkbox
+                                            id="edit-is-admin"
+                                            name="is_admin"
+                                            value="1"
+                                            defaultChecked={userToEdit.is_admin}
+                                        />
+                                        <Label htmlFor="edit-is-admin" className="flex flex-col gap-0.5">
+                                            <span>Права администратора</span>
+                                            <span className="text-muted-foreground text-xs font-normal">
+                                                Предоставляет полный доступ к панели управления
+                                            </span>
+                                        </Label>
+                                    </div>
+
+                                    <DialogFooter>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => setUserToEdit(null)}
+                                            disabled={processing}
+                                        >
+                                            Отмена
+                                        </Button>
+                                        <Button type="submit" disabled={processing}>
+                                            {processing ? 'Сохранение…' : 'Сохранить'}
+                                        </Button>
+                                    </DialogFooter>
+                                </>
+                            )}
+                        </Form>
+                    )}
                 </DialogContent>
             </Dialog>
         </>

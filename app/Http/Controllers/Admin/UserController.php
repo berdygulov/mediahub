@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -31,6 +32,7 @@ class UserController extends Controller
 
         $users = User::query()
             ->select(['id', 'name', 'username', 'email', 'is_admin', 'created_at'])
+            ->where('id', '!=', $request->user()->id)
             ->when($search, fn ($q) => $q->where(function ($q) use ($search): void {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
@@ -76,11 +78,30 @@ class UserController extends Controller
     {
         $user = User::findOrFail($id);
 
-        $validated = $request->validate([
-            'is_admin' => ['required', 'boolean'],
-        ]);
+        $rules = [
+            ...$this->profileRules($user->id),
+            'username' => $this->usernameRules($user->id),
+            'is_admin' => ['boolean'],
+        ];
 
-        $user->update($validated);
+        if ($request->filled('password')) {
+            $rules['password'] = ['string', Password::default(), 'confirmed'];
+        }
+
+        $validated = $request->validate($rules);
+
+        $updateData = [
+            'name' => $validated['name'],
+            'username' => $validated['username'],
+            'email' => $validated['email'],
+            'is_admin' => $validated['is_admin'] ?? $user->is_admin,
+        ];
+
+        if (isset($validated['password'])) {
+            $updateData['password'] = $validated['password'];
+        }
+
+        $user->update($updateData);
 
         return back();
     }

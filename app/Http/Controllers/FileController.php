@@ -92,17 +92,24 @@ class FileController extends Controller
     {
         $user = $request->user();
 
-        $query = File::query()->with(['folder', 'user']);
-        if (! $user->is_admin) {
-            $query->where('user_id', $user->id);
-        }
+        $file = File::accessibleBy($user)
+            ->with(['folder', 'user', 'comments.user', 'accesses.user'])
+            ->findOrFail($id);
 
-        $file = $query->findOrFail($id);
+        $eligibleUsers = $user->is_admin
+            ? User::where('is_admin', false)
+                ->where('id', '!=', $file->user_id)
+                ->whereNotIn('id', $file->accesses->pluck('user_id'))
+                ->orderBy('name')
+                ->get(['id', 'name'])
+            : collect();
 
         return Inertia::render('files/show', [
             'file' => $file,
             'streamUrl' => route('files.stream', $file->id),
             'downloadUrl' => route('files.download', $file->id),
+            'canDownload' => $user->is_admin || $file->user_id === $user->id,
+            'eligibleUsers' => $eligibleUsers,
         ]);
     }
 
@@ -110,12 +117,7 @@ class FileController extends Controller
     {
         $user = $request->user();
 
-        $query = File::query();
-        if (! $user->is_admin) {
-            $query->where('user_id', $user->id);
-        }
-
-        $file = $query->findOrFail($id);
+        $file = File::accessibleBy($user)->findOrFail($id);
         $path = Storage::disk($file->disk)->path($file->path);
 
         return response()->file($path, ['Content-Type' => $file->mime_type]);

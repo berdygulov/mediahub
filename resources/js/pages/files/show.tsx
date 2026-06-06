@@ -1,10 +1,11 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
-import { ArrowLeft, Download, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download, MessageSquare, Send, Trash2, UserMinus, UserPlus, Users } from 'lucide-react';
 import * as React from 'react';
 
 import { AudioPlayer } from '@/components/players/audio-player';
 import { VideoPlayer } from '@/components/players/video-player';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -14,6 +15,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import * as fileAccessRoute from '@/actions/App/Http/Controllers/Admin/FileAccessController';
+import * as fileCommentsRoute from '@/actions/App/Http/Controllers/FileCommentController';
 import { formatBytes } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import * as filesRoute from '@/routes/files';
@@ -28,6 +33,25 @@ interface FileOwner {
     name: string;
 }
 
+interface Comment {
+    id: number;
+    user_id: number;
+    body: string;
+    created_at: string;
+    user: { id: number; name: string };
+}
+
+interface FileAccessRecord {
+    id: number;
+    user_id: number;
+    user: { id: number; name: string };
+}
+
+interface EligibleUser {
+    id: number;
+    name: string;
+}
+
 interface FileRecord {
     id: number;
     name: string;
@@ -37,17 +61,230 @@ interface FileRecord {
     folder: FileFolder | null;
     user: FileOwner;
     created_at: string;
+    comments: Comment[];
+    accesses: FileAccessRecord[];
 }
 
 interface Props {
     file: FileRecord;
     streamUrl: string;
     downloadUrl: string;
+    canDownload: boolean;
+    eligibleUsers: EligibleUser[];
+}
+
+// ─── Access management (admin only) ───────────────────────────────────────────
+
+function AccessSection({ file, eligibleUsers }: { file: FileRecord; eligibleUsers: EligibleUser[] }) {
+    const { data, setData, post, processing, reset } = useForm({ user_id: '' });
+
+    function handleGrant(e: React.FormEvent) {
+        e.preventDefault();
+        post(fileAccessRoute.store(file.id).url, {
+            preserveScroll: true,
+            onSuccess: () => reset(),
+        });
+    }
+
+    function handleRevoke(userId: number) {
+        router.delete(fileAccessRoute.destroy({ fileId: file.id, userId }).url, {
+            preserveScroll: true,
+        });
+    }
+
+    return (
+        <div className="border-sidebar-border/70 dark:border-sidebar-border rounded-xl border p-6">
+            <div className="mb-4 flex items-center gap-2">
+                <Users className="text-muted-foreground size-4" />
+                <h2 className="font-semibold">
+                    Доступ{' '}
+                    <span className="text-muted-foreground font-normal">
+                        ({file.accesses.length})
+                    </span>
+                </h2>
+            </div>
+
+            {eligibleUsers.length > 0 && (
+                <form onSubmit={handleGrant} className="mb-4 flex items-center gap-2">
+                    <Select value={data.user_id} onValueChange={(v) => setData('user_id', v)}>
+                        <SelectTrigger className="h-8 flex-1 text-sm">
+                            <SelectValue placeholder="Выберите пользователя…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {eligibleUsers.map((u) => (
+                                <SelectItem key={u.id} value={String(u.id)}>
+                                    {u.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Button
+                        type="submit"
+                        size="sm"
+                        className="h-8 shrink-0"
+                        disabled={processing || !data.user_id}
+                    >
+                        <UserPlus className="size-3.5" />
+                        Выдать
+                    </Button>
+                </form>
+            )}
+
+            {file.accesses.length === 0 ? (
+                <p className="text-muted-foreground py-2 text-sm">
+                    Никому не выдан доступ к этому файлу.
+                </p>
+            ) : (
+                <div className="divide-y">
+                    {file.accesses.map((access) => (
+                        <div key={access.id} className="flex items-center justify-between py-2.5">
+                            <div className="flex items-center gap-2.5">
+                                <Avatar className="size-7">
+                                    <AvatarFallback className="text-xs font-medium uppercase">
+                                        {access.user.name.charAt(0)}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm">{access.user.name}</span>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="size-7 text-muted-foreground hover:bg-transparent hover:text-destructive"
+                                onClick={() => handleRevoke(access.user_id)}
+                            >
+                                <UserMinus className="size-3.5" />
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Comments section ──────────────────────────────────────────────────────────
+
+function CommentItem({
+    comment,
+    fileId,
+    canDelete,
+}: {
+    comment: Comment;
+    fileId: number;
+    canDelete: boolean;
+}) {
+    const [deleting, setDeleting] = React.useState(false);
+
+    function handleDelete() {
+        setDeleting(true);
+        router.delete(fileCommentsRoute.destroy({ fileId, commentId: comment.id }).url, {
+            preserveScroll: true,
+            onFinish: () => setDeleting(false),
+        });
+    }
+
+    return (
+        <div className="flex gap-3 py-3">
+            <Avatar>
+                <AvatarFallback className="text-xs font-medium uppercase">
+                    {comment.user.name.charAt(0)}
+                </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">{comment.user.name}</span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground text-xs">
+                            {format(parseISO(comment.created_at), 'dd.MM.yyyy HH:mm')}
+                        </span>
+                        {canDelete && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleDelete}
+                                disabled={deleting}
+                                className="size-6 text-muted-foreground hover:bg-transparent hover:text-destructive"
+                            >
+                                <Trash2 className="size-3.5" />
+                            </Button>
+                        )}
+                    </div>
+                </div>
+                <p className="text-sm whitespace-pre-wrap">{comment.body}</p>
+            </div>
+        </div>
+    );
+}
+
+function CommentsSection({ file }: { file: FileRecord }) {
+    const { auth } = usePage().props;
+    const isAdmin = auth.user.is_admin;
+    const currentUserId = auth.user.id;
+
+    const { data, setData, post, processing, reset, errors } = useForm({ body: '' });
+
+    function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        post(fileCommentsRoute.store(file.id).url, {
+            preserveScroll: true,
+            onSuccess: () => reset(),
+        });
+    }
+
+    return (
+        <div className="border-sidebar-border/70 dark:border-sidebar-border rounded-xl border p-6">
+            <div className="mb-4 flex items-center gap-2">
+                <MessageSquare className="text-muted-foreground size-4" />
+                <h2 className="font-semibold">
+                    Комментарии{' '}
+                    <span className="text-muted-foreground font-normal">
+                        ({file.comments.length})
+                    </span>
+                </h2>
+            </div>
+
+            <form onSubmit={handleSubmit} className="mb-6 space-y-2">
+                <Textarea
+                    value={data.body}
+                    onChange={(e) => setData('body', e.target.value)}
+                    placeholder="Напишите комментарий…"
+                    rows={3}
+                    className="resize-none"
+                />
+                {errors.body && <p className="text-destructive text-xs">{errors.body}</p>}
+                <div className="flex justify-end">
+                    <Button type="submit" size="sm" disabled={processing || !data.body.trim()}>
+                        <Send className="size-3.5" />
+                        Отправить
+                    </Button>
+                </div>
+            </form>
+
+            {file.comments.length === 0 ? (
+                <p className="text-muted-foreground py-4 text-center text-sm">
+                    Комментариев пока нет. Будьте первым!
+                </p>
+            ) : (
+                <div className="divide-y">
+                    {file.comments.map((comment) => (
+                        <CommentItem
+                            key={comment.id}
+                            comment={comment}
+                            fileId={file.id}
+                            canDelete={isAdmin || comment.user_id === currentUserId}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function FilesShow({ file, streamUrl, downloadUrl }: Props) {
+export default function FilesShow({ file, streamUrl, downloadUrl, canDownload, eligibleUsers }: Props) {
     const { auth } = usePage().props;
     const isAdmin = auth.user.is_admin;
 
@@ -106,27 +343,38 @@ export default function FilesShow({ file, streamUrl, downloadUrl }: Props) {
                             </div>
 
                             <div className="flex shrink-0 items-center gap-2">
-                                <a
-                                    href={downloadUrl}
-                                    download
-                                    className="hover:bg-muted flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm"
-                                >
-                                    <Download className="size-3.5" />
-                                    Скачать
-                                </a>
+                                {canDownload && (
+                                    <a
+                                        href={downloadUrl}
+                                        download
+                                        className="hover:bg-muted flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm"
+                                    >
+                                        <Download className="size-3.5" />
+                                        Скачать
+                                    </a>
+                                )}
                                 {isAdmin && (
-                                    <button
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
                                         onClick={() => setShowDeleteDialog(true)}
-                                        className="border-destructive/30 text-destructive hover:bg-destructive/10 flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm"
+                                        className="border-destructive/30 text-destructive hover:bg-destructive/10 gap-1.5"
                                     >
                                         <Trash2 className="size-3.5" />
                                         Удалить
-                                    </button>
+                                    </Button>
                                 )}
                             </div>
                         </div>
                     </div>
                 </div>
+
+                {isAdmin && (
+                    <AccessSection file={file} eligibleUsers={eligibleUsers} />
+                )}
+
+                <CommentsSection file={file} />
             </div>
 
             <Dialog
