@@ -15,11 +15,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import * as fileAccessRoute from '@/actions/App/Http/Controllers/Admin/FileAccessController';
 import * as fileCommentsRoute from '@/actions/App/Http/Controllers/FileCommentController';
-import { formatBytes } from '@/lib/utils';
+import { cn, formatBytes } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import * as filesRoute from '@/routes/files';
 
@@ -173,10 +174,12 @@ function CommentItem({
     comment,
     fileId,
     canDelete,
+    isOwn,
 }: {
     comment: Comment;
     fileId: number;
     canDelete: boolean;
+    isOwn: boolean;
 }) {
     const [deleting, setDeleting] = React.useState(false);
 
@@ -197,7 +200,14 @@ function CommentItem({
             </Avatar>
             <div className="flex-1 space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium">{comment.user.name}</span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{comment.user.name}</span>
+                        {isOwn && (
+                            <span className="bg-primary/10 text-primary rounded-xl px-2 py-0.5 text-xs font-medium">
+                                Вы
+                            </span>
+                        )}
+                    </div>
                     <div className="flex items-center gap-2">
                         <span className="text-muted-foreground text-xs">
                             {format(parseISO(comment.created_at), 'dd.MM.yyyy HH:mm')}
@@ -222,7 +232,7 @@ function CommentItem({
     );
 }
 
-function CommentsSection({ file }: { file: FileRecord }) {
+function CommentsSection({ file, className }: { file: FileRecord; className?: string }) {
     const { auth } = usePage().props;
     const isAdmin = auth.user.is_admin;
     const currentUserId = auth.user.id;
@@ -238,7 +248,7 @@ function CommentsSection({ file }: { file: FileRecord }) {
     }
 
     return (
-        <div className="border-sidebar-border/70 dark:border-sidebar-border rounded-xl border p-6">
+        <div className={cn(className)}>
             <div className="mb-4 flex items-center gap-2">
                 <MessageSquare className="text-muted-foreground size-4" />
                 <h2 className="font-semibold">
@@ -249,7 +259,24 @@ function CommentsSection({ file }: { file: FileRecord }) {
                 </h2>
             </div>
 
-            <form onSubmit={handleSubmit} className="mb-6 space-y-2">
+            {file.comments.length === 0 ? (
+                <p className="text-muted-foreground py-4 text-center text-sm">
+                    Комментариев пока нет. Будьте первым!
+                </p>
+            ) : (
+                <div className="divide-y">
+                    {file.comments.map((comment) => (
+                        <CommentItem
+                            key={comment.id}
+                            comment={comment}
+                            fileId={file.id}
+                            canDelete={isAdmin || comment.user_id === currentUserId}
+                            isOwn={comment.user_id === currentUserId}
+                        />
+                    ))}
+                </div>
+            )}
+            <form onSubmit={handleSubmit} className="mt-6 space-y-2">
                 <Textarea
                     value={data.body}
                     onChange={(e) => setData('body', e.target.value)}
@@ -265,23 +292,6 @@ function CommentsSection({ file }: { file: FileRecord }) {
                     </Button>
                 </div>
             </form>
-
-            {file.comments.length === 0 ? (
-                <p className="text-muted-foreground py-4 text-center text-sm">
-                    Комментариев пока нет. Будьте первым!
-                </p>
-            ) : (
-                <div className="divide-y">
-                    {file.comments.map((comment) => (
-                        <CommentItem
-                            key={comment.id}
-                            comment={comment}
-                            fileId={file.id}
-                            canDelete={isAdmin || comment.user_id === currentUserId}
-                        />
-                    ))}
-                </div>
-            )}
         </div>
     );
 }
@@ -326,7 +336,7 @@ export default function FilesShow({ file, streamUrl, downloadUrl, canDownload, e
                             <AudioPlayer streamUrl={streamUrl} />
                         )}
                     </div>
-                    <div className="col-span-2 xl:col-span-1">
+                    <div className="col-span-2 xl:col-span-1 flex flex-col gap-4">
                         <div className="flex flex-wrap items-start justify-between gap-4">
                             <div className="flex flex-col gap-1">
                                 <h1 className="text-lg font-semibold">{file.name}</h1>
@@ -371,14 +381,14 @@ export default function FilesShow({ file, streamUrl, downloadUrl, canDownload, e
                                 )}
                             </div>
                         </div>
+                        <Separator/>
+                        <CommentsSection file={file} />
                     </div>
                 </div>
 
                 {isAdmin && (
                     <AccessSection file={file} eligibleUsers={eligibleUsers} />
                 )}
-
-                <CommentsSection file={file} />
             </div>
 
             <Dialog

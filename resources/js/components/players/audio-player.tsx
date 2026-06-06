@@ -62,6 +62,7 @@ export function AudioPlayer({ streamUrl }: Props) {
 
         let cancelled = false;
         let animFrame = 0;
+        const abortController = new AbortController();
 
         function drawWaveform(currentTime: number) {
             const canvas = waveformCanvasRef.current;
@@ -175,11 +176,14 @@ export function AudioPlayer({ streamUrl }: Props) {
             updateVoiceIndicator();
         }
 
-        fetch(streamUrl)
+        fetch(streamUrl, { signal: abortController.signal })
             .then((r) => r.arrayBuffer())
-            .then((buf) => audioCtx.decodeAudioData(buf))
+            .then((buf) => {
+                if (cancelled) return;
+                return audioCtx.decodeAudioData(buf);
+            })
             .then((buffer) => {
-                if (cancelled) {
+                if (!buffer || cancelled) {
                     return;
                 }
 
@@ -229,15 +233,15 @@ export function AudioPlayer({ streamUrl }: Props) {
                 animFrame = requestAnimationFrame(tick);
             })
             .catch((err) => {
-                if (!cancelled) {
-                    console.error('Audio load error:', err);
-                    setIsLoading(false);
-                    setLoadError(true);
-                }
+                if (cancelled || err?.name === 'AbortError') return;
+                console.error('Audio load error:', err);
+                setIsLoading(false);
+                setLoadError(true);
             });
 
         return () => {
             cancelled = true;
+            abortController.abort();
             cancelAnimationFrame(animFrame);
             sourceRef.current?.stop();
             audioCtx.close();
