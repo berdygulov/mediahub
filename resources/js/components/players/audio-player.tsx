@@ -432,7 +432,7 @@ export function AudioPlayer({ streamUrl }: Props) {
                             step={0.01}
                             value={isMuted ? 0 : volume}
                             onChange={handleVolumeChange}
-                            className="w-20 accent-indigo-500"
+                            className="w-20 accent-primary"
                         />
                     </div>
                 </div>

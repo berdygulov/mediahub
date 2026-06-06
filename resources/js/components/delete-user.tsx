@@ -26,8 +26,8 @@ export default function DeleteUser() {
                 title="Удаление аккаунта"
                 description="Удалите аккаунт и все связанные с ним данные"
             />
-            <div className="space-y-4 rounded-lg border border-red-100 bg-red-50 p-4 dark:border-red-200/10 dark:bg-red-700/10">
-                <div className="relative space-y-0.5 text-red-600 dark:text-red-100">
+            <div className="space-y-4 rounded-lg border border-destructive/20 bg-destructive/10 p-4">
+                <div className="relative space-y-0.5 text-destructive">
                     <p className="font-medium">Внимание</p>
                     <p className="text-sm">
                         Действие необратимо. Будьте осторожны.

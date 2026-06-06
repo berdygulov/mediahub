@@ -77,6 +77,7 @@ interface Props {
 
 function AccessSection({ file, eligibleUsers }: { file: FileRecord; eligibleUsers: EligibleUser[] }) {
     const { data, setData, post, processing, reset } = useForm({ user_id: '' });
+    const [revokingId, setRevokingId] = React.useState<number | null>(null);
 
     function handleGrant(e: React.FormEvent) {
         e.preventDefault();
@@ -87,8 +88,10 @@ function AccessSection({ file, eligibleUsers }: { file: FileRecord; eligibleUser
     }
 
     function handleRevoke(userId: number) {
+        setRevokingId(userId);
         router.delete(fileAccessRoute.destroy({ fileId: file.id, userId }).url, {
             preserveScroll: true,
+            onFinish: () => setRevokingId(null),
         });
     }
 
@@ -151,6 +154,7 @@ function AccessSection({ file, eligibleUsers }: { file: FileRecord; eligibleUser
                                 variant="ghost"
                                 size="icon"
                                 className="size-7 text-muted-foreground hover:bg-transparent hover:text-destructive"
+                                disabled={revokingId === access.user_id}
                                 onClick={() => handleRevoke(access.user_id)}
                             >
                                 <UserMinus className="size-3.5" />
