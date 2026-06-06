@@ -1,9 +1,8 @@
 import { router, useForm, usePage } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
-import { MessageSquare, Send, Trash2 } from 'lucide-react';
+import { Send, Trash2 } from 'lucide-react';
 import * as React from 'react';
 
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
@@ -43,42 +42,31 @@ function CommentItem({
     }
 
     return (
-        <div className="flex gap-3 py-3">
-            <Avatar>
-                <AvatarFallback className="text-xs font-medium uppercase">
-                    {comment.user.name.charAt(0)}
-                </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{comment.user.name}</span>
-                        {isOwn && (
-                            <span className="bg-primary/10 text-primary rounded-xl px-2 py-0.5 text-xs font-medium">
-                                Вы
-                            </span>
-                        )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground text-xs">
-                            {format(parseISO(comment.created_at), 'dd.MM.yyyy HH:mm')}
-                        </span>
-                        {canDelete && (
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={handleDelete}
-                                disabled={deleting}
-                                className="size-6 text-muted-foreground hover:bg-transparent hover:text-destructive"
-                            >
-                                <Trash2 className="size-3.5" />
-                            </Button>
-                        )}
-                    </div>
-                </div>
-                <p className="text-sm whitespace-pre-wrap">{comment.body}</p>
+        <div className="py-2.5">
+            <div className="mb-1 flex items-center gap-2">
+                <span className="text-xs font-semibold text-foreground">
+                    {comment.user.name}
+                </span>
+                {isOwn && (
+                    <span className="text-muted-foreground text-xs">Вы</span>
+                )}
+                <span className="text-muted-foreground ml-auto text-xs">
+                    {format(parseISO(comment.created_at), 'dd.MM HH:mm')}
+                </span>
+                {canDelete && (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleDelete}
+                        disabled={deleting}
+                        className="size-5 shrink-0 text-muted-foreground hover:bg-transparent hover:text-destructive"
+                    >
+                        <Trash2 className="size-3" />
+                    </Button>
+                )}
             </div>
+            <p className="text-sm leading-relaxed">{comment.body}</p>
         </div>
     );
 }
@@ -99,6 +87,16 @@ export function CommentsSection({ fileId, comments, loading = false, className, 
 
     const { data, setData, post, processing, reset, errors } = useForm({ body: '' });
 
+    const scrollRef = React.useRef<HTMLDivElement>(null);
+    const prevCountRef = React.useRef(comments.length);
+
+    React.useEffect(() => {
+        if (comments.length > prevCountRef.current && scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+        prevCountRef.current = comments.length;
+    }, [comments.length]);
+
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         post(fileCommentsRoute.store(fileId).url, {
@@ -111,49 +109,48 @@ export function CommentsSection({ fileId, comments, loading = false, className, 
     }
 
     return (
-        <div className={cn(className)}>
-            <div className="mb-4 flex items-center gap-2">
-                <MessageSquare className="text-muted-foreground size-4" />
-                <h2 className="font-semibold">
-                    Комментарии{' '}
-                    {!loading && (
-                        <span className="text-muted-foreground font-normal">({comments.length})</span>
-                    )}
-                </h2>
+        <div className={cn('border-l-2 border-primary pl-4', className)}>
+            <div className="mb-3 flex items-center gap-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wide text-foreground">
+                    Комментарии
+                </span>
+                {!loading && (
+                    <span className="text-muted-foreground text-xs">({comments.length})</span>
+                )}
             </div>
 
-            {loading ? (
-                <div className="space-y-4 py-2">
-                    {[1, 2, 3].map((i) => (
-                        <div key={i} className="flex gap-3">
-                            <Skeleton className="size-8 shrink-0 rounded-full" />
-                            <div className="flex-1 space-y-2">
-                                <Skeleton className="h-3 w-24" />
+            <div ref={scrollRef} className="max-h-64 overflow-y-auto">
+                {loading ? (
+                    <div className="space-y-4 py-1">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="space-y-1.5">
+                                <Skeleton className="h-2.5 w-20" />
                                 <Skeleton className="h-3 w-full" />
+                                <Skeleton className="h-3 w-2/3" />
                             </div>
-                        </div>
-                    ))}
-                </div>
-            ) : comments.length === 0 ? (
-                <p className="text-muted-foreground py-4 text-center text-sm">
-                    Комментариев пока нет
-                </p>
-            ) : (
-                <div className="divide-y">
-                    {comments.map((comment) => (
-                        <CommentItem
-                            key={comment.id}
-                            comment={comment}
-                            fileId={fileId}
-                            canDelete={isAdmin || comment.user_id === currentUserId}
-                            isOwn={comment.user_id === currentUserId}
-                            onCommentDeleted={onCommentDeleted}
-                        />
-                    ))}
-                </div>
-            )}
+                        ))}
+                    </div>
+                ) : comments.length === 0 ? (
+                    <p className="text-muted-foreground py-4 text-sm">
+                        Комментариев пока нет
+                    </p>
+                ) : (
+                    <div className="divide-y">
+                        {comments.map((comment) => (
+                            <CommentItem
+                                key={comment.id}
+                                comment={comment}
+                                fileId={fileId}
+                                canDelete={isAdmin || comment.user_id === currentUserId}
+                                isOwn={comment.user_id === currentUserId}
+                                onCommentDeleted={onCommentDeleted}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
 
-            <form onSubmit={handleSubmit} className="mt-6 space-y-2">
+            <form onSubmit={handleSubmit} className="mt-4 space-y-2">
                 <Textarea
                     value={data.body}
                     onChange={(e) => setData('body', e.target.value)}
