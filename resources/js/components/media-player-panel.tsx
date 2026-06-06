@@ -1,21 +1,23 @@
 import { format, parseISO } from 'date-fns';
 import { Film, Folder, Music, X } from 'lucide-react';
 
+import { CommentsSection } from '@/components/comments-section';
 import { AudioPlayer } from '@/components/players/audio-player';
 import { VideoPlayer } from '@/components/players/video-player';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { useMediaPlayer } from '@/contexts/media-player-context';
-import { formatBytes } from '@/lib/utils';
+import { cn, formatBytes } from '@/lib/utils';
 
-    export function MediaPlayerPanel() {
-    const { currentMedia, isOpen, close } = useMediaPlayer();
+export function MediaPlayerPanel() {
+    const { currentMedia, isOpen, comments, commentsLoading, close, refreshComments } = useMediaPlayer();
 
     if (!isOpen || !currentMedia) {
         return null;
     }
 
     return (
-        <div className="animate-in slide-in-from-bottom sticky bottom-0 z-10 border-t-2 border-t-primary bg-background shadow-lg duration-300 p-4 lg:p-6 flex flex-col gap-4">
+        <div className="animate-in slide-in-from-bottom sticky bottom-0 z-10 flex flex-col gap-4 border-t-2 border-t-primary bg-background p-4 shadow-lg duration-300 lg:p-6">
             <div className="flex items-center gap-2">
                 <span className="relative flex size-2.5 shrink-0">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
@@ -25,9 +27,10 @@ import { formatBytes } from '@/lib/utils';
                     Сейчас воспроизводится
                 </p>
             </div>
-            <div className={`grid grid-cols-2 gap-4 ${currentMedia.type === 'video' ? 'lg:flex' : ''}`}>
+
+            <div className={cn('grid grid-cols-2 gap-4', currentMedia.type === 'video' && 'lg:flex')}>
                 {currentMedia.type === 'video' ? (
-                    <div className="col-span-2 xl:col-span-1 overflow-hidden rounded-lg shrink-0">
+                    <div className="col-span-2 shrink-0 overflow-hidden rounded-lg xl:col-span-1">
                         <VideoPlayer
                             key={currentMedia.id}
                             streamUrl={currentMedia.streamUrl}
@@ -41,12 +44,12 @@ import { formatBytes } from '@/lib/utils';
                     </div>
                 )}
 
-                <div className="col-span-2 xl:col-span-1 flex flex-col gap-1.5 shrink min-w-0">
+                <div className="col-span-2 flex grow min-w-0 shrink flex-col gap-2 xl:col-span-1">
                     <div className="flex items-center gap-2">
                         {currentMedia.type === 'video' ? (
-                            <Film className="size-4 shrink-0 text-blue-500" />
+                            <Film className="text-muted-foreground size-4 shrink-0" />
                         ) : (
-                            <Music className="size-4 shrink-0 text-purple-500" />
+                            <Music className="text-muted-foreground size-4 shrink-0" />
                         )}
                         <span className="text-foreground truncate text-base font-medium">
                             {currentMedia.name}
@@ -60,11 +63,20 @@ import { formatBytes } from '@/lib/utils';
                         <span>{format(parseISO(currentMedia.created_at), 'dd.MM.yyyy HH:mm')}</span>
                         {currentMedia.folder && (
                             <span className="flex items-center gap-1">
-                            <Folder className="size-3 shrink-0" />
+                                <Folder className="size-3 shrink-0" />
                                 {currentMedia.folder.name}
-                        </span>
+                            </span>
                         )}
                     </div>
+
+                    <Separator />
+                    <CommentsSection
+                        fileId={currentMedia.id}
+                        comments={comments}
+                        loading={commentsLoading}
+                        onCommentPosted={refreshComments}
+                        onCommentDeleted={refreshComments}
+                    />
                 </div>
             </div>
 

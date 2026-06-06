@@ -3,11 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\File;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class FileCommentController extends Controller
 {
+    public function index(int $fileId, Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $file = File::accessibleBy($user)->findOrFail($fileId);
+
+        return response()->json(
+            $file->comments()->with('user:id,name')->oldest()->get()
+        );
+    }
+
     public function store(int $fileId, Request $request): RedirectResponse
     {
         $user = $request->user();

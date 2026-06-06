@@ -26,6 +26,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('files/{id}/folders', [FileController::class, 'folderTree'])->name('files.folders');
     Route::patch('files/{id}/folder', [FileController::class, 'moveFolder'])->name('files.move-folder');
     Route::delete('files/{id}', [FileController::class, 'destroy'])->middleware('admin')->name('files.destroy');
+    Route::get('files/{fileId}/comments', [FileCommentController::class, 'index'])->name('file-comments.index');
     Route::post('files/{fileId}/comments', [FileCommentController::class, 'store'])->name('file-comments.store');
     Route::delete('files/{fileId}/comments/{commentId}', [FileCommentController::class, 'destroy'])->name('file-comments.destroy');
 
