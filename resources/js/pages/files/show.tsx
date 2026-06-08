@@ -1,12 +1,11 @@
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
-import { ArrowLeft, Download, Trash2, UserMinus, UserPlus, Users } from 'lucide-react';
+import { ArrowLeft, Download, Trash2 } from 'lucide-react';
 import * as React from 'react';
 
 import { AudioPlayer } from '@/components/players/audio-player';
 import { VideoPlayer } from '@/components/players/video-player';
 import { Comment, CommentsSection } from '@/components/comments-section';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -17,8 +16,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import * as fileAccessRoute from '@/actions/App/Http/Controllers/Admin/FileAccessController';
 import { formatBytes } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import * as filesRoute from '@/routes/files';
@@ -33,17 +30,6 @@ interface FileOwner {
     name: string;
 }
 
-interface FileAccessRecord {
-    id: number;
-    user_id: number;
-    user: { id: number; name: string };
-}
-
-interface EligibleUser {
-    id: number;
-    name: string;
-}
-
 interface FileRecord {
     id: number;
     name: string;
@@ -54,7 +40,6 @@ interface FileRecord {
     user: FileOwner;
     created_at: string;
     comments: Comment[];
-    accesses: FileAccessRecord[];
 }
 
 interface Props {
@@ -62,106 +47,9 @@ interface Props {
     streamUrl: string;
     downloadUrl: string;
     canDownload: boolean;
-    eligibleUsers: EligibleUser[];
 }
 
-// ─── Access management (admin only) ───────────────────────────────────────────
-
-function AccessSection({ file, eligibleUsers }: { file: FileRecord; eligibleUsers: EligibleUser[] }) {
-    const { data, setData, post, processing, reset } = useForm({ user_id: '' });
-    const [revokingId, setRevokingId] = React.useState<number | null>(null);
-
-    function handleGrant(e: React.FormEvent) {
-        e.preventDefault();
-        post(fileAccessRoute.store(file.id).url, {
-            preserveScroll: true,
-            onSuccess: () => reset(),
-        });
-    }
-
-    function handleRevoke(userId: number) {
-        setRevokingId(userId);
-        router.delete(fileAccessRoute.destroy({ fileId: file.id, userId }).url, {
-            preserveScroll: true,
-            onFinish: () => setRevokingId(null),
-        });
-    }
-
-    return (
-        <div className="border-sidebar-border/70 dark:border-sidebar-border rounded-xl border p-6">
-            <div className="mb-4 flex items-center gap-2">
-                <Users className="text-muted-foreground size-4" />
-                <h2 className="font-semibold">
-                    Доступ{' '}
-                    <span className="text-muted-foreground font-normal">
-                        ({file.accesses.length})
-                    </span>
-                </h2>
-            </div>
-
-            {eligibleUsers.length > 0 && (
-                <form onSubmit={handleGrant} className="mb-4 flex items-center gap-2">
-                    <Select value={data.user_id} onValueChange={(v) => setData('user_id', v)}>
-                        <SelectTrigger className="h-8 flex-1 text-sm">
-                            <SelectValue placeholder="Выберите пользователя…" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {eligibleUsers.map((u) => (
-                                <SelectItem key={u.id} value={String(u.id)}>
-                                    {u.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Button
-                        type="submit"
-                        size="sm"
-                        className="h-8 shrink-0"
-                        disabled={processing || !data.user_id}
-                    >
-                        <UserPlus className="size-3.5" />
-                        Выдать
-                    </Button>
-                </form>
-            )}
-
-            {file.accesses.length === 0 ? (
-                <p className="text-muted-foreground py-2 text-sm">
-                    Никому не выдан доступ к этому файлу.
-                </p>
-            ) : (
-                <div className="divide-y">
-                    {file.accesses.map((access) => (
-                        <div key={access.id} className="flex items-center justify-between py-2.5">
-                            <div className="flex items-center gap-2.5">
-                                <Avatar className="size-7">
-                                    <AvatarFallback className="text-xs font-medium uppercase">
-                                        {access.user.name.charAt(0)}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <span className="text-sm">{access.user.name}</span>
-                            </div>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="size-7 text-muted-foreground hover:bg-transparent hover:text-destructive"
-                                disabled={revokingId === access.user_id}
-                                onClick={() => handleRevoke(access.user_id)}
-                            >
-                                <UserMinus className="size-3.5" />
-                            </Button>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
-export default function FilesShow({ file, streamUrl, downloadUrl, canDownload, eligibleUsers }: Props) {
+export default function FilesShow({ file, streamUrl, downloadUrl, canDownload }: Props) {
     const { auth } = usePage().props;
     const isAdmin = auth.user.is_admin;
 
@@ -248,10 +136,6 @@ export default function FilesShow({ file, streamUrl, downloadUrl, canDownload, e
                         <CommentsSection fileId={file.id} comments={file.comments} />
                     </div>
                 </div>
-
-                {isAdmin && (
-                    <AccessSection file={file} eligibleUsers={eligibleUsers} />
-                )}
             </div>
 
             <Dialog

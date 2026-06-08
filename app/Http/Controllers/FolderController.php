@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Folder;
+use App\Models\FolderAccess;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -13,15 +15,29 @@ class FolderController extends Controller
 {
     public function index(Request $request): Response
     {
-        $folders = Folder::query()
-            ->where('user_id', $request->user()->id)
-            ->whereNull('parent_id')
-            ->withCount(['children', 'files'])
-            ->orderBy('name')
-            ->get();
+        $user = $request->user();
+
+        $query = Folder::query()->withCount(['children', 'files'])->orderBy('name');
+
+        if ($user->is_admin) {
+            $query->where('user_id', $user->id)->whereNull('parent_id');
+        } else {
+            $grantedIds = FolderAccess::where('user_id', $user->id)
+                ->pluck('folder_id')
+                ->toArray();
+
+            $query->where(function ($q) use ($user, $grantedIds): void {
+                $q->where(function ($inner) use ($user): void {
+                    $inner->where('user_id', $user->id)->whereNull('parent_id');
+                });
+                if (! empty($grantedIds)) {
+                    $q->orWhereIn('id', $grantedIds);
+                }
+            });
+        }
 
         return Inertia::render('folders/index', [
-            'folders' => $folders,
+            'folders' => $query->get(),
         ]);
     }
 
@@ -29,10 +45,17 @@ class FolderController extends Controller
     {
         $user = $request->user();
 
-        $folder = Folder::query()
-            ->where('user_id', $user->id)
-            ->withCount(['children', 'files'])
-            ->findOrFail($id);
+        $query = Folder::query()->withCount(['children', 'files']);
+
+        if (! $user->is_admin) {
+            $accessibleIds = Folder::accessibleIdsFor($user);
+            $query->where(function ($q) use ($user, $accessibleIds): void {
+                $q->where('user_id', $user->id)
+                    ->orWhereIn('id', $accessibleIds);
+            });
+        }
+
+        $folder = $query->findOrFail($id);
 
         $subfolders = $folder->children()
             ->withCount(['children', 'files'])
@@ -47,11 +70,24 @@ class FolderController extends Controller
             ->map(fn (Folder $f) => ['id' => $f->id, 'name' => $f->name])
             ->values();
 
+        $accesses = $user->is_admin
+            ? $folder->accesses()->with('user')->get()
+            : collect();
+
+        $eligibleUsers = $user->is_admin
+            ? User::where('is_admin', false)
+                ->whereNotIn('id', $folder->accesses()->pluck('user_id'))
+                ->orderBy('name')
+                ->get(['id', 'name'])
+            : collect();
+
         return Inertia::render('folders/show', [
             'folder' => $folder,
             'subfolders' => $subfolders,
             'files' => $files,
             'ancestors' => $ancestors,
+            'accesses' => $accesses,
+            'eligibleUsers' => $eligibleUsers,
         ]);
     }
 
@@ -62,7 +98,7 @@ class FolderController extends Controller
             'parent_id' => [
                 'nullable',
                 'integer',
-                Rule::exists('folders', 'id')->where('user_id', $request->user()->id),
+                Rule::exists('folders', 'id'),
                 function (string $attribute, mixed $value, \Closure $fail): void {
                     if ($value === null) {
                         return;
@@ -86,9 +122,7 @@ class FolderController extends Controller
 
     public function update(int $id, Request $request): RedirectResponse
     {
-        $folder = Folder::query()
-            ->where('user_id', $request->user()->id)
-            ->findOrFail($id);
+        $folder = Folder::findOrFail($id);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -101,9 +135,7 @@ class FolderController extends Controller
 
     public function destroy(int $id, Request $request): RedirectResponse
     {
-        $folder = Folder::query()
-            ->where('user_id', $request->user()->id)
-            ->findOrFail($id);
+        $folder = Folder::findOrFail($id);
 
         $parentId = $folder->parent_id;
 

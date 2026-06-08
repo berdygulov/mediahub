@@ -24,7 +24,7 @@ class FileController extends Controller
         $query = File::query()->with(['folder.parent.parent.parent', 'user']);
 
         if (! $user->is_admin) {
-            $query->where('user_id', $user->id);
+            $query->accessibleBy($user);
         } elseif ($ownerId = $request->query('owner_id')) {
             $query->where('user_id', $ownerId);
         }
@@ -93,23 +93,14 @@ class FileController extends Controller
         $user = $request->user();
 
         $file = File::accessibleBy($user)
-            ->with(['folder', 'user', 'comments.user', 'accesses.user'])
+            ->with(['folder', 'user', 'comments.user'])
             ->findOrFail($id);
-
-        $eligibleUsers = $user->is_admin
-            ? User::where('is_admin', false)
-                ->where('id', '!=', $file->user_id)
-                ->whereNotIn('id', $file->accesses->pluck('user_id'))
-                ->orderBy('name')
-                ->get(['id', 'name'])
-            : collect();
 
         return Inertia::render('files/show', [
             'file' => $file,
             'streamUrl' => route('files.stream', $file->id),
             'downloadUrl' => route('files.download', $file->id),
             'canDownload' => $user->is_admin || $file->user_id === $user->id,
-            'eligibleUsers' => $eligibleUsers,
         ]);
     }
 

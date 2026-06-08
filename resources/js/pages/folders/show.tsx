@@ -9,6 +9,7 @@ import {
     useReactTable,
 } from '@tanstack/react-table';
 import { Head, Link, router, setLayoutProps, useForm, usePage } from '@inertiajs/react';
+import { UserMinus, UserPlus, Users } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import {
     AlertCircle,
@@ -33,8 +34,10 @@ import {
 import * as React from 'react';
 import { toast } from 'sonner';
 
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { buildTree, FlatFolder, FolderNodeItem, getAncestorIds } from '@/components/folder-node-item';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMediaPlayer } from '@/contexts/media-player-context';
 import {
     Dialog,
@@ -54,16 +57,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn, formatBytes } from '@/lib/utils';
 import { dashboard } from '@/routes';
+import * as folderAccessRoute from '@/actions/App/Http/Controllers/Admin/FolderAccessController';
 import * as filesRoute from '@/routes/files';
 import * as foldersRoute from '@/routes/folders';
 import * as uploadRoute from '@/routes/upload';
@@ -106,11 +103,24 @@ interface AncestorItem {
     name: string;
 }
 
+interface AccessRecord {
+    id: number;
+    user_id: number;
+    user: { id: number; name: string };
+}
+
+interface EligibleUser {
+    id: number;
+    name: string;
+}
+
 interface Props {
     folder: FolderItem;
     subfolders: FolderItem[];
     files: FileItem[];
     ancestors: AncestorItem[];
+    accesses: AccessRecord[];
+    eligibleUsers: EligibleUser[];
 }
 
 interface TableRow {
@@ -153,7 +163,7 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
     );
 }
 
-export default function FoldersShow({ folder, subfolders, files, ancestors }: Props) {
+export default function FoldersShow({ folder, subfolders, files, ancestors, accesses, eligibleUsers }: Props) {
     const { auth } = usePage().props;
     const isAdmin = auth.user.is_admin;
     const canCreateSubfolder = isAdmin && ancestors.length < 4;
@@ -173,6 +183,25 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
         name: '',
         parent_id: folder.id,
     });
+
+    const { data: accessData, setData: setAccessData, post: postAccess, processing: accessProcessing, reset: resetAccess } = useForm({ user_id: '' });
+    const [revokingId, setRevokingId] = React.useState<number | null>(null);
+
+    function handleGrantAccess(e: React.FormEvent) {
+        e.preventDefault();
+        postAccess(folderAccessRoute.store(folder.id).url, {
+            preserveScroll: true,
+            onSuccess: () => resetAccess(),
+        });
+    }
+
+    function handleRevokeAccess(userId: number) {
+        setRevokingId(userId);
+        router.delete(folderAccessRoute.destroy({ folderId: folder.id, userId }).url, {
+            preserveScroll: true,
+            onFinish: () => setRevokingId(null),
+        });
+    }
 
     // Upload queue
     const [uploadQueue, setUploadQueueState] = React.useState<QueueItem[]>([]);
@@ -1009,6 +1038,81 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                         </>
                     )}
                 </div>
+
+            {/* Access management (admin only) */}
+            {isAdmin && (
+                <div className="rounded-xl border p-6">
+                    <div className="mb-4 flex items-center gap-2">
+                        <Users className="size-4 text-muted-foreground" />
+                        <h2 className="font-semibold">
+                            Доступ{' '}
+                            <span className="font-normal text-muted-foreground">
+                                ({accesses.length})
+                            </span>
+                        </h2>
+                    </div>
+
+                    {eligibleUsers.length > 0 && (
+                        <form onSubmit={handleGrantAccess} className="mb-4 flex items-center gap-2">
+                            <Select
+                                value={accessData.user_id}
+                                onValueChange={(v) => setAccessData('user_id', v)}
+                            >
+                                <SelectTrigger className="h-8 flex-1 text-sm">
+                                    <SelectValue placeholder="Выберите пользователя…" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {eligibleUsers.map((u) => (
+                                        <SelectItem key={u.id} value={String(u.id)}>
+                                            {u.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Button
+                                type="submit"
+                                size="sm"
+                                className="h-8 shrink-0"
+                                disabled={accessProcessing || !accessData.user_id}
+                            >
+                                <UserPlus className="size-3.5" />
+                                Выдать
+                            </Button>
+                        </form>
+                    )}
+
+                    {accesses.length === 0 ? (
+                        <p className="py-2 text-sm text-muted-foreground">
+                            Никому не выдан доступ к этой папке.
+                        </p>
+                    ) : (
+                        <div className="divide-y">
+                            {accesses.map((access) => (
+                                <div key={access.id} className="flex items-center justify-between py-2.5">
+                                    <div className="flex items-center gap-2.5">
+                                        <Avatar className="size-7">
+                                            <AvatarFallback className="text-xs font-medium uppercase">
+                                                {access.user.name.charAt(0)}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <span className="text-sm">{access.user.name}</span>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="size-7 text-muted-foreground hover:bg-transparent hover:text-destructive"
+                                        disabled={revokingId === access.user_id}
+                                        onClick={() => handleRevokeAccess(access.user_id)}
+                                    >
+                                        <UserMinus className="size-3.5" />
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
             </div>
 
             {/* Delete confirmation dialog */}

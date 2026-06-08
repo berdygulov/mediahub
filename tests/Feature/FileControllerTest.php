@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\File;
+use App\Models\Folder;
+use App\Models\FolderAccess;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -19,22 +21,42 @@ class FileControllerTest extends TestCase
         $this->get(route('files.index'))->assertRedirect(route('login'));
     }
 
-    public function test_user_sees_only_own_files(): void
+    public function test_user_sees_own_files(): void
     {
-        $owner = User::factory()->create();
+        $user = User::factory()->create();
         $other = User::factory()->create();
 
-        $ownFile = File::factory()->for($owner)->create();
+        $ownFile = File::factory()->for($user)->create();
         $otherFile = File::factory()->for($other)->create();
 
-        $response = $this->actingAs($owner)->get(route('files.index'));
+        $response = $this->actingAs($user)->get(route('files.index'));
 
         $response->assertOk();
-        $data = $response->original->getData()['page']['props']['files']['data'];
-        $ids = collect($data)->pluck('id');
+        $ids = collect($response->original->getData()['page']['props']['files']['data'])->pluck('id');
 
         $this->assertTrue($ids->contains($ownFile->id));
         $this->assertFalse($ids->contains($otherFile->id));
+    }
+
+    public function test_user_sees_files_from_granted_folders(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+
+        $folder = Folder::factory()->for($admin)->create();
+        $accessibleFile = File::factory()->for($admin)->inFolder($folder)->create();
+        $inaccessibleFile = File::factory()->for($other)->create();
+
+        FolderAccess::create(['folder_id' => $folder->id, 'user_id' => $user->id]);
+
+        $response = $this->actingAs($user)->get(route('files.index'));
+
+        $response->assertOk();
+        $ids = collect($response->original->getData()['page']['props']['files']['data'])->pluck('id');
+
+        $this->assertTrue($ids->contains($accessibleFile->id));
+        $this->assertFalse($ids->contains($inaccessibleFile->id));
     }
 
     public function test_admin_sees_all_files(): void

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\File;
 use App\Models\Folder;
+use App\Models\FolderAccess;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -20,19 +21,24 @@ class FolderControllerTest extends TestCase
         $this->get(route('folders.index'))->assertRedirect(route('login'));
     }
 
-    public function test_user_sees_only_own_root_folders(): void
+    public function test_user_sees_own_root_folders_and_granted_folders(): void
     {
+        $admin = User::factory()->create(['is_admin' => true]);
         $user = User::factory()->create();
         $other = User::factory()->create();
 
         $ownFolder = Folder::factory()->for($user)->create();
+        $grantedFolder = Folder::factory()->for($admin)->create();
         $otherFolder = Folder::factory()->for($other)->create();
+
+        FolderAccess::create(['folder_id' => $grantedFolder->id, 'user_id' => $user->id]);
 
         $response = $this->actingAs($user)->get(route('folders.index'));
         $response->assertOk();
 
         $ids = collect($response->original->getData()['page']['props']['folders'])->pluck('id');
         $this->assertTrue($ids->contains($ownFolder->id));
+        $this->assertTrue($ids->contains($grantedFolder->id));
         $this->assertFalse($ids->contains($otherFolder->id));
     }
 
@@ -157,7 +163,7 @@ class FolderControllerTest extends TestCase
         ]);
     }
 
-    public function test_admin_cannot_create_subfolder_in_another_users_folder(): void
+    public function test_admin_can_create_subfolder_in_another_users_folder(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
         $other = User::factory()->create();
@@ -165,7 +171,12 @@ class FolderControllerTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('folders.store'), ['name' => 'Sub', 'parent_id' => $otherFolder->id])
-            ->assertSessionHasErrors(['parent_id']);
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('folders', [
+            'name' => 'Sub',
+            'parent_id' => $otherFolder->id,
+        ]);
     }
 
     public function test_folder_name_is_required(): void
@@ -343,7 +354,7 @@ class FolderControllerTest extends TestCase
             ->assertSessionHasErrors(['name']);
     }
 
-    public function test_admin_cannot_rename_another_users_folder(): void
+    public function test_admin_can_rename_another_users_folder(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
         $other = User::factory()->create();
@@ -351,8 +362,8 @@ class FolderControllerTest extends TestCase
 
         $this->actingAs($admin)
             ->patch(route('folders.update', $folder->id), ['name' => 'Renamed'])
-            ->assertNotFound();
+            ->assertRedirect();
 
-        $this->assertDatabaseHas('folders', ['id' => $folder->id, 'name' => 'Original']);
+        $this->assertDatabaseHas('folders', ['id' => $folder->id, 'name' => 'Renamed']);
     }
 }

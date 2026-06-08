@@ -38,20 +38,19 @@ class File extends Model
         return $this->hasMany(FileComment::class)->oldest();
     }
 
-    public function accesses(): HasMany
-    {
-        return $this->hasMany(FileAccess::class);
-    }
-
     public function scopeAccessibleBy(Builder $query, User $user): Builder
     {
         if ($user->is_admin) {
             return $query;
         }
 
-        return $query->where(function (Builder $q) use ($user) {
-            $q->where('user_id', $user->id)
-                ->orWhereHas('accesses', fn (Builder $q) => $q->where('user_id', $user->id));
+        $folderIds = Folder::accessibleIdsFor($user);
+
+        return $query->where(function (Builder $q) use ($user, $folderIds): void {
+            $q->where('user_id', $user->id);
+            if (! empty($folderIds)) {
+                $q->orWhereIn('folder_id', $folderIds);
+            }
         });
     }
 }

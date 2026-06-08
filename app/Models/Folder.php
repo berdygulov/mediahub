@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Database\Factories\FolderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -50,6 +51,11 @@ class Folder extends Model
         return $this->hasMany(File::class);
     }
 
+    public function accesses(): HasMany
+    {
+        return $this->hasMany(FolderAccess::class);
+    }
+
     /**
      * Recursively load all nested children up to the given depth.
      *
@@ -84,5 +90,52 @@ class Folder extends Model
     public function depth(): int
     {
         return count($this->ancestors()) + 1;
+    }
+
+    /**
+     * Returns all folder IDs accessible to the user:
+     * directly granted folders plus all their descendants recursively.
+     *
+     * @return array<int>
+     */
+    public static function accessibleIdsFor(User $user): array
+    {
+        $grantedIds = FolderAccess::where('user_id', $user->id)
+            ->pluck('folder_id')
+            ->toArray();
+
+        if (empty($grantedIds)) {
+            return [];
+        }
+
+        $allIds = $grantedIds;
+        $frontier = $grantedIds;
+
+        while (! empty($frontier)) {
+            $childIds = static::query()
+                ->whereIn('parent_id', $frontier)
+                ->pluck('id')
+                ->toArray();
+
+            $newIds = array_diff($childIds, $allIds);
+
+            if (empty($newIds)) {
+                break;
+            }
+
+            $allIds = array_merge($allIds, $newIds);
+            $frontier = $newIds;
+        }
+
+        return $allIds;
+    }
+
+    public function scopeAccessibleBy(Builder $query, User $user): Builder
+    {
+        if ($user->is_admin) {
+            return $query;
+        }
+
+        return $query->whereIn('id', static::accessibleIdsFor($user));
     }
 }

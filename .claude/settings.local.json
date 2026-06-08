@@ -1,11 +1,13 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(php artisan *)",
+      "Bash(npx tsc *)",
+      "PowerShell(Remove-Item *)"
+    ]
+  },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "laravel-boost"
-  ],
-  "permissions": {
-    "allow": [
-      "Bash(php artisan *)"
-    ]
-  }
+  ]
 }
