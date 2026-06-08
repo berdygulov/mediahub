@@ -10,17 +10,25 @@ import {
 } from '@tanstack/react-table';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
-import { ArrowDown, ArrowUp, ArrowUpDown, Folder, FolderPlus } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Folder, FolderPlus, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { dashboard } from '@/routes';
@@ -71,6 +79,19 @@ export default function FoldersIndex({ folders }: Props) {
     const [showCreate, setShowCreate] = React.useState(false);
     const { data, setData, post, processing, errors, reset } = useForm({ name: '' });
 
+    const [folderToDelete, setFolderToDelete] = React.useState<FolderItem | null>(null);
+    const [isDeletingFolder, setIsDeletingFolder] = React.useState(false);
+
+    const [folderToRename, setFolderToRename] = React.useState<FolderItem | null>(null);
+    const {
+        data: renameData,
+        setData: setRenameData,
+        patch: renamePatch,
+        processing: renameProcessing,
+        errors: renameErrors,
+        clearErrors: clearRenameErrors,
+    } = useForm({ name: '' });
+
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
 
@@ -110,8 +131,50 @@ export default function FoldersIndex({ folders }: Props) {
                     <span className="text-sm text-muted-foreground">{folderMeta(row.original)}</span>
                 ),
             },
+            ...(isAdmin
+                ? [
+                      {
+                          id: 'actions',
+                          header: '',
+                          cell: ({ row }: { row: { original: FolderItem } }) => (
+                              <div
+                                  className="flex items-center justify-end"
+                                  onClick={(e) => e.stopPropagation()}
+                              >
+                                  <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="size-7">
+                                              <MoreHorizontal className="size-3.5" />
+                                          </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                          <DropdownMenuItem
+                                              onClick={() => {
+                                                  clearRenameErrors();
+                                                  setRenameData('name', row.original.name);
+                                                  setFolderToRename(row.original);
+                                              }}
+                                          >
+                                              <Pencil className="mr-2 size-4" />
+                                              Переименовать
+                                          </DropdownMenuItem>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem
+                                              className="text-destructive focus:text-destructive"
+                                              onClick={() => setFolderToDelete(row.original)}
+                                          >
+                                              <Trash2 className="mr-2 size-4" />
+                                              Удалить
+                                          </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                  </DropdownMenu>
+                              </div>
+                          ),
+                      } as ColumnDef<FolderItem>,
+                  ]
+                : []),
         ],
-        [],
+        [isAdmin],
     );
 
     const table = useReactTable({
@@ -138,6 +201,28 @@ export default function FoldersIndex({ folders }: Props) {
     function openCreate() {
         reset();
         setShowCreate(true);
+    }
+
+    function handleDeleteFolder() {
+        if (!folderToDelete) return;
+        setIsDeletingFolder(true);
+        router.delete(foldersRoute.destroy(folderToDelete.id).url, {
+            onFinish: () => {
+                setIsDeletingFolder(false);
+                setFolderToDelete(null);
+            },
+        });
+    }
+
+    function handleRenameFolder(e: React.FormEvent) {
+        e.preventDefault();
+        if (!folderToRename) return;
+        renamePatch(foldersRoute.update(folderToRename.id).url, {
+            onSuccess: () => {
+                clearRenameErrors();
+                setFolderToRename(null);
+            },
+        });
     }
 
     return (
@@ -203,6 +288,40 @@ export default function FoldersIndex({ folders }: Props) {
                                                     {folderMeta(row.original)} · {format(parseISO(row.original.created_at), 'dd.MM.yyyy')}
                                                 </p>
                                             </div>
+                                            {isAdmin && (
+                                                <div
+                                                    className="shrink-0"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="size-7">
+                                                                <MoreHorizontal className="size-3.5" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem
+                                                                onClick={() => {
+                                                                    clearRenameErrors();
+                                                                    setRenameData('name', row.original.name);
+                                                                    setFolderToRename(row.original);
+                                                                }}
+                                                            >
+                                                                <Pencil className="mr-2 size-4" />
+                                                                Переименовать
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem
+                                                                className="text-destructive focus:text-destructive"
+                                                                onClick={() => setFolderToDelete(row.original)}
+                                                            >
+                                                                <Trash2 className="mr-2 size-4" />
+                                                                Удалить
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
+                                            )}
                                         </div>
                                     ))
                                 )}
@@ -264,6 +383,101 @@ export default function FoldersIndex({ folders }: Props) {
                 </div>
             </div>
 
+            {/* Delete folder dialog */}
+            <Dialog
+                open={!!folderToDelete}
+                onOpenChange={(open) => !isDeletingFolder && !open && setFolderToDelete(null)}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Удалить папку</DialogTitle>
+                        <DialogDescription asChild>
+                            <div className="space-y-2">
+                                <p>
+                                    Вы уверены, что хотите удалить папку{' '}
+                                    <span className="text-foreground font-medium">«{folderToDelete?.name}»</span>?
+                                </p>
+                                {folderToDelete && (folderToDelete.children_count > 0 || folderToDelete.files_count > 0) ? (
+                                    <p>
+                                        Папка содержит{' '}
+                                        {[
+                                            folderToDelete.children_count > 0
+                                                ? ruPlural(folderToDelete.children_count, 'подпапку', 'подпапки', 'подпапок')
+                                                : null,
+                                            folderToDelete.files_count > 0
+                                                ? ruPlural(folderToDelete.files_count, 'файл', 'файла', 'файлов')
+                                                : null,
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' и ')}
+                                        . Всё вложенное содержимое также будет безвозвратно удалено.
+                                    </p>
+                                ) : (
+                                    <p>Это действие необратимо.</p>
+                                )}
+                            </div>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setFolderToDelete(null)}
+                            disabled={isDeletingFolder}
+                        >
+                            Отмена
+                        </Button>
+                        <Button variant="destructive" onClick={handleDeleteFolder} disabled={isDeletingFolder}>
+                            {isDeletingFolder ? 'Удаление…' : 'Удалить'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Rename folder dialog */}
+            <Dialog
+                open={!!folderToRename}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        clearRenameErrors();
+                        setFolderToRename(null);
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Переименовать папку</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleRenameFolder} className="space-y-4">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="rename-folder-name">Новое название</Label>
+                            <Input
+                                id="rename-folder-name"
+                                value={renameData.name}
+                                onChange={(e) => setRenameData('name', e.target.value)}
+                                autoFocus
+                            />
+                            {renameErrors.name && (
+                                <p className="text-xs text-destructive">{renameErrors.name}</p>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setFolderToRename(null)}
+                                disabled={renameProcessing}
+                            >
+                                Отмена
+                            </Button>
+                            <Button type="submit" disabled={renameProcessing || !renameData.name.trim()}>
+                                {renameProcessing ? 'Сохранение…' : 'Сохранить'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Create folder dialog */}
             <Dialog
                 open={showCreate}
                 onOpenChange={(open) => {

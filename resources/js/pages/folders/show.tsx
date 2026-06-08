@@ -276,6 +276,19 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
         clearErrors: clearRenameErrors,
     } = useForm({ name: folder.name });
 
+    const [subfolderToDelete, setSubfolderToDelete] = React.useState<FolderItem | null>(null);
+    const [isDeletingSubfolder, setIsDeletingSubfolder] = React.useState(false);
+
+    const [subfolderToRename, setSubfolderToRename] = React.useState<FolderItem | null>(null);
+    const {
+        data: subRenameData,
+        setData: setSubRenameData,
+        patch: subRenamePatch,
+        processing: subRenameProcessing,
+        errors: subRenameErrors,
+        clearErrors: clearSubRenameErrors,
+    } = useForm({ name: '' });
+
     const [fileToDelete, setFileToDelete] = React.useState<FileItem | null>(null);
     const [isDeleting, setIsDeleting] = React.useState(false);
 
@@ -433,7 +446,43 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                 header: '',
                 cell: ({ row }) => {
                     const r = row.original;
-                    if (r.kind !== 'file' || !r.media_type || !r.mime_type) return null;
+                    if (r.kind === 'folder') {
+                        if (!isAdmin) return null;
+                        return (
+                            <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="size-7">
+                                            <MoreHorizontal className="size-3.5" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                            onClick={() => {
+                                                const sf = subfolders.find((f) => f.id === r.id);
+                                                if (!sf) return;
+                                                clearSubRenameErrors();
+                                                setSubRenameData('name', sf.name);
+                                                setSubfolderToRename(sf);
+                                            }}
+                                        >
+                                            <Pencil className="mr-2 size-4" />
+                                            Переименовать
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            className="text-destructive focus:text-destructive"
+                                            onClick={() => setSubfolderToDelete(subfolders.find((f) => f.id === r.id) ?? null)}
+                                        >
+                                            <Trash2 className="mr-2 size-4" />
+                                            Удалить
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        );
+                    }
+                    if (!r.media_type || !r.mime_type) return null;
                     return (
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                             <Button
@@ -491,7 +540,7 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                 },
             },
         ],
-        [folder.name, play, isAdmin, files],
+        [folder.name, play, isAdmin, files, subfolders],
     );
 
     const table = useReactTable({
@@ -547,6 +596,28 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                 onFinish: () => setIsMoving(false),
             },
         );
+    }
+
+    function handleDeleteSubfolder() {
+        if (!subfolderToDelete) return;
+        setIsDeletingSubfolder(true);
+        router.delete(foldersRoute.destroy(subfolderToDelete.id).url, {
+            onFinish: () => {
+                setIsDeletingSubfolder(false);
+                setSubfolderToDelete(null);
+            },
+        });
+    }
+
+    function handleRenameSubfolder(e: React.FormEvent) {
+        e.preventDefault();
+        if (!subfolderToRename) return;
+        subRenamePatch(foldersRoute.update(subfolderToRename.id).url, {
+            onSuccess: () => {
+                clearSubRenameErrors();
+                setSubfolderToRename(null);
+            },
+        });
     }
 
     function handleDeleteFolder() {
@@ -791,6 +862,39 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                                                         </span>
                                                     </div>
                                                 </div>
+                                                {item.kind === 'folder' && isAdmin && (
+                                                    <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="size-7">
+                                                                    <MoreHorizontal className="size-3.5" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem
+                                                                    onClick={() => {
+                                                                        const sf = subfolders.find((f) => f.id === item.id);
+                                                                        if (!sf) return;
+                                                                        clearSubRenameErrors();
+                                                                        setSubRenameData('name', sf.name);
+                                                                        setSubfolderToRename(sf);
+                                                                    }}
+                                                                >
+                                                                    <Pencil className="mr-2 size-4" />
+                                                                    Переименовать
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem
+                                                                    className="text-destructive focus:text-destructive"
+                                                                    onClick={() => setSubfolderToDelete(subfolders.find((f) => f.id === item.id) ?? null)}
+                                                                >
+                                                                    <Trash2 className="mr-2 size-4" />
+                                                                    Удалить
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                )}
                                                 {item.kind === 'file' && item.media_type && item.mime_type && (
                                                     <div className="flex shrink-0 items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
                                                         <Button
@@ -988,6 +1092,100 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                             {isMoving ? 'Перемещение…' : 'Переместить'}
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete subfolder dialog */}
+            <Dialog
+                open={!!subfolderToDelete}
+                onOpenChange={(open) => !isDeletingSubfolder && !open && setSubfolderToDelete(null)}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Удалить папку</DialogTitle>
+                        <DialogDescription asChild>
+                            <div className="space-y-2">
+                                <p>
+                                    Вы уверены, что хотите удалить папку{' '}
+                                    <span className="text-foreground font-medium">«{subfolderToDelete?.name}»</span>?
+                                </p>
+                                {subfolderToDelete && (subfolderToDelete.children_count > 0 || subfolderToDelete.files_count > 0) ? (
+                                    <p>
+                                        Папка содержит{' '}
+                                        {[
+                                            subfolderToDelete.children_count > 0
+                                                ? ruPlural(subfolderToDelete.children_count, 'подпапку', 'подпапки', 'подпапок')
+                                                : null,
+                                            subfolderToDelete.files_count > 0
+                                                ? ruPlural(subfolderToDelete.files_count, 'файл', 'файла', 'файлов')
+                                                : null,
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' и ')}
+                                        . Всё вложенное содержимое также будет безвозвратно удалено.
+                                    </p>
+                                ) : (
+                                    <p>Это действие необратимо.</p>
+                                )}
+                            </div>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setSubfolderToDelete(null)}
+                            disabled={isDeletingSubfolder}
+                        >
+                            Отмена
+                        </Button>
+                        <Button variant="destructive" onClick={handleDeleteSubfolder} disabled={isDeletingSubfolder}>
+                            {isDeletingSubfolder ? 'Удаление…' : 'Удалить'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Rename subfolder dialog */}
+            <Dialog
+                open={!!subfolderToRename}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        clearSubRenameErrors();
+                        setSubfolderToRename(null);
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Переименовать папку</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleRenameSubfolder} className="space-y-4">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="subfolder-rename-name">Новое название</Label>
+                            <Input
+                                id="subfolder-rename-name"
+                                value={subRenameData.name}
+                                onChange={(e) => setSubRenameData('name', e.target.value)}
+                                autoFocus
+                            />
+                            {subRenameErrors.name && (
+                                <p className="text-xs text-destructive">{subRenameErrors.name}</p>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setSubfolderToRename(null)}
+                                disabled={subRenameProcessing}
+                            >
+                                Отмена
+                            </Button>
+                            <Button type="submit" disabled={subRenameProcessing || !subRenameData.name.trim()}>
+                                {subRenameProcessing ? 'Сохранение…' : 'Сохранить'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
 
