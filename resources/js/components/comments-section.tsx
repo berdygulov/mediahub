@@ -155,10 +155,19 @@ export function CommentsSection({ fileId, comments, loading = false, className, 
                     value={data.body}
                     onChange={(e) => setData('body', e.target.value)}
                     placeholder="Напишите комментарий…"
+                    maxLength={2000}
                     rows={3}
                     className="resize-none"
                 />
-                {errors.body && <p className="text-destructive text-xs">{errors.body}</p>}
+                <div className="flex items-center justify-between">
+                    {errors.body
+                        ? <p className="text-xs text-destructive">{errors.body}</p>
+                        : <span />
+                    }
+                    <p className={cn('text-xs', data.body.length >= 2000 ? 'text-destructive' : 'text-muted-foreground')}>
+                        {data.body.length}/2000
+                    </p>
+                </div>
                 <div className="flex justify-end">
                     <Button type="submit" size="sm" disabled={processing || !data.body.trim()}>
                         <Send className="size-3.5" />
