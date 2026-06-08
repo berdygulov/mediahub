@@ -1083,7 +1083,7 @@ export default function FoldersShow({ folder, subfolders, files, ancestors, acce
                                                             className="px-6 pb-4 pt-2"
                                                         >
                                                             <p className="text-xs font-medium mb-0.5">Описание</p>
-                                                            <p className="text-muted-foreground text-sm whitespace-pre-wrap">
+                                                            <p className="text-muted-foreground text-xs whitespace-pre-wrap">
                                                                 {row.original.description}
                                                             </p>
                                                         </td>
