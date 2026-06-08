@@ -65,4 +65,9 @@ class Folder extends Model
 
         return $ancestors;
     }
+
+    public function depth(): int
+    {
+        return count($this->ancestors()) + 1;
+    }
 }

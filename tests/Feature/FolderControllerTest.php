@@ -185,6 +185,37 @@ class FolderControllerTest extends TestCase
             ->assertSessionHasErrors(['name']);
     }
 
+    public function test_cannot_create_subfolder_beyond_depth_5(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $level1 = Folder::factory()->for($admin)->create();
+        $level2 = Folder::factory()->withParent($level1)->create();
+        $level3 = Folder::factory()->withParent($level2)->create();
+        $level4 = Folder::factory()->withParent($level3)->create();
+        $level5 = Folder::factory()->withParent($level4)->create();
+
+        $this->actingAs($admin)
+            ->post(route('folders.store'), ['name' => 'Too Deep', 'parent_id' => $level5->id])
+            ->assertSessionHasErrors(['parent_id']);
+
+        $this->assertDatabaseMissing('folders', ['name' => 'Too Deep']);
+    }
+
+    public function test_can_create_subfolder_at_depth_4_parent(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $level1 = Folder::factory()->for($admin)->create();
+        $level2 = Folder::factory()->withParent($level1)->create();
+        $level3 = Folder::factory()->withParent($level2)->create();
+        $level4 = Folder::factory()->withParent($level3)->create();
+
+        $this->actingAs($admin)
+            ->post(route('folders.store'), ['name' => 'Level 5', 'parent_id' => $level4->id])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('folders', ['name' => 'Level 5', 'parent_id' => $level4->id]);
+    }
+
     // --- destroy ---
 
     public function test_non_admin_cannot_delete_folder(): void

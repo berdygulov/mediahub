@@ -63,6 +63,15 @@ class FolderController extends Controller
                 'nullable',
                 'integer',
                 Rule::exists('folders', 'id')->where('user_id', $request->user()->id),
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value === null) {
+                        return;
+                    }
+                    $parent = Folder::find($value);
+                    if ($parent !== null && $parent->depth() >= 5) {
+                        $fail('Нельзя создать подпапку: достигнут максимальный уровень вложенности (5).');
+                    }
+                },
             ],
         ]);
 

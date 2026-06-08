@@ -147,6 +147,7 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
 export default function FoldersShow({ folder, subfolders, files, ancestors }: Props) {
     const { auth } = usePage().props;
     const isAdmin = auth.user.is_admin;
+    const canCreateSubfolder = isAdmin && ancestors.length < 4;
     const { play } = useMediaPlayer();
 
     setLayoutProps({
@@ -579,10 +580,12 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                                 <Upload className="size-3.5" />
                                 <span className="hidden sm:inline">Загрузить файлы</span>
                             </Button>
-                            <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
-                                <FolderPlus className="size-3.5" />
-                                <span className="hidden sm:inline">Новая подпапка</span>
-                            </Button>
+                            {canCreateSubfolder && (
+                                <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
+                                    <FolderPlus className="size-3.5" />
+                                    <span className="hidden sm:inline">Новая подпапка</span>
+                                </Button>
+                            )}
                         </div>
                     )}
                 </div>
@@ -682,7 +685,7 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                                 <Folder className="text-muted-foreground size-5" />
                             </div>
                             <p className="text-sm font-medium">Папка пуста</p>
-                            {isAdmin && (
+                            {canCreateSubfolder && (
                                 <button
                                     className="text-primary text-xs underline underline-offset-4"
                                     onClick={openCreate}
