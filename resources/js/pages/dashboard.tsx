@@ -1,11 +1,24 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
-import { Film, HardDrive, Music, Upload } from 'lucide-react';
+import { Download, Eye, Film, Folder, FolderInput, HardDrive, Music, Play, Trash2, Upload } from 'lucide-react';
+import * as React from 'react';
 
-import { formatBytes } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { buildTree, FlatFolder, FolderNodeItem, getAncestorIds } from '@/components/folder-node-item';
+import { useMediaPlayer } from '@/contexts/media-player-context';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn, formatBytes } from '@/lib/utils';
 import type { User } from '@/types';
 import { dashboard } from '@/routes';
-import { index as filesIndex, show as filesShow } from '@/routes/files';
+import * as filesRoute from '@/routes/files';
 import { create as uploadCreate } from '@/routes/upload';
 
 interface FileRecord {
@@ -32,6 +45,85 @@ interface Props {
 export default function Dashboard({ stats, recentFiles }: Props) {
     const { auth } = usePage().props;
     const isAdmin = (auth as { user: User }).user?.is_admin;
+    const { play } = useMediaPlayer();
+
+    const [fileToDelete, setFileToDelete] = React.useState<FileRecord | null>(null);
+    const [isDeleting, setIsDeleting] = React.useState(false);
+
+    const [fileToMove, setFileToMove] = React.useState<FileRecord | null>(null);
+    const [foldersList, setFoldersList] = React.useState<FlatFolder[]>([]);
+    const [foldersLoading, setFoldersLoading] = React.useState(false);
+    const [selectedFolderId, setSelectedFolderId] = React.useState<number | null>(null);
+    const [isMoving, setIsMoving] = React.useState(false);
+
+    React.useEffect(() => {
+        if (!fileToMove) {
+            return;
+        }
+
+        setSelectedFolderId(null);
+        setFoldersList([]);
+        setFoldersLoading(true);
+
+        const controller = new AbortController();
+
+        fetch(filesRoute.folders(fileToMove.id).url, {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+            signal: controller.signal,
+        })
+            .then((r) => r.json())
+            .then((data: FlatFolder[]) => {
+                setFoldersList(data);
+                setFoldersLoading(false);
+            })
+            .catch((err: unknown) => {
+                if ((err as { name?: string }).name !== 'AbortError') {
+                    setFoldersLoading(false);
+                }
+            });
+
+        return () => controller.abort();
+    }, [fileToMove]);
+
+    function handleDelete() {
+        if (!fileToDelete) {
+            return;
+        }
+
+        setIsDeleting(true);
+        router.delete(filesRoute.destroy(fileToDelete.id).url, {
+            preserveScroll: true,
+            onFinish: () => {
+                setIsDeleting(false);
+                setFileToDelete(null);
+            },
+        });
+    }
+
+    function handleMoveFolder() {
+        if (!fileToMove) {
+            return;
+        }
+
+        setIsMoving(true);
+        router.patch(
+            filesRoute.moveFolder(fileToMove.id).url,
+            { folder_id: selectedFolderId },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => setFileToMove(null),
+                onFinish: () => setIsMoving(false),
+            },
+        );
+    }
+
+    const folderTree = React.useMemo(() => buildTree(foldersList), [foldersList]);
+    const ancestorIds = React.useMemo(
+        () => getAncestorIds(foldersList, null),
+        [foldersList],
+    );
 
     return (
         <>
@@ -39,7 +131,7 @@ export default function Dashboard({ stats, recentFiles }: Props) {
             <div className="flex h-full flex-1 flex-col gap-6 p-4 lg:p-6">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <Link
-                        href={filesIndex().url}
+                        href={filesRoute.index().url}
                         className="rounded-xl border border-sidebar-border/70 bg-card p-4 transition-colors hover:bg-muted/40 dark:border-sidebar-border"
                     >
                         <div className="flex items-center justify-between">
@@ -50,7 +142,7 @@ export default function Dashboard({ stats, recentFiles }: Props) {
                     </Link>
 
                     <Link
-                        href={filesIndex({ query: { type: 'video' } }).url}
+                        href={filesRoute.index({ query: { type: 'video' } }).url}
                         className="rounded-xl border border-sidebar-border/70 bg-card p-4 transition-colors hover:bg-muted/40 dark:border-sidebar-border"
                     >
                         <div className="flex items-center justify-between">
@@ -61,7 +153,7 @@ export default function Dashboard({ stats, recentFiles }: Props) {
                     </Link>
 
                     <Link
-                        href={filesIndex({ query: { type: 'audio' } }).url}
+                        href={filesRoute.index({ query: { type: 'audio' } }).url}
                         className="rounded-xl border border-sidebar-border/70 bg-card p-4 transition-colors hover:bg-muted/40 dark:border-sidebar-border"
                     >
                         <div className="flex items-center justify-between">
@@ -109,31 +201,179 @@ export default function Dashboard({ stats, recentFiles }: Props) {
                     ) : (
                         <div className="divide-y">
                             {recentFiles.map((file) => (
-                                <Link
+                                <div
                                     key={file.id}
-                                    href={filesShow(file.id).url}
-                                    className="flex items-center gap-3 py-3 transition-colors hover:text-foreground first:pt-0 last:pb-0"
+                                    className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
                                 >
-                                    <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted">
-                                        {file.type === 'video' ? (
-                                            <Film className="size-4 text-blue-500" />
-                                        ) : (
-                                            <Music className="size-4 text-purple-500" />
+                                    <div
+                                        className="flex flex-1 cursor-pointer items-center gap-3 transition-colors hover:text-foreground min-w-0"
+                                        onClick={() => router.visit(filesRoute.show(file.id).url)}
+                                    >
+                                        <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted">
+                                            {file.type === 'video' ? (
+                                                <Film className="size-4 text-blue-500" />
+                                            ) : (
+                                                <Music className="size-4 text-purple-500" />
+                                            )}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-sm font-medium">{file.name}</p>
+                                            <p className="text-xs text-muted-foreground">{formatBytes(file.size)}</p>
+                                        </div>
+                                        <span className="shrink-0 text-xs text-muted-foreground">
+                                            {format(parseISO(file.created_at), 'dd.MM.yyyy')}
+                                        </span>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="size-7"
+                                            title="Воспроизвести"
+                                            onClick={() =>
+                                                play({
+                                                    id: file.id,
+                                                    name: file.name,
+                                                    type: file.type,
+                                                    mime_type: file.mime_type,
+                                                    size: file.size,
+                                                    created_at: file.created_at,
+                                                    folder: null,
+                                                    streamUrl: filesRoute.stream(file.id).url,
+                                                })
+                                            }
+                                        >
+                                            <Play className="size-3.5" />
+                                        </Button>
+                                        <Link href={filesRoute.show(file.id).url}>
+                                            <Button variant="ghost" size="icon" className="size-7" title="Просмотр">
+                                                <Eye className="size-3.5" />
+                                            </Button>
+                                        </Link>
+                                        <a href={filesRoute.download(file.id).url}>
+                                            <Button variant="ghost" size="icon" className="size-7" title="Скачать">
+                                                <Download className="size-3.5" />
+                                            </Button>
+                                        </a>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="size-7"
+                                            title="Переместить в папку"
+                                            onClick={() => setFileToMove(file)}
+                                        >
+                                            <FolderInput className="size-3.5" />
+                                        </Button>
+                                        {isAdmin && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="text-destructive hover:text-destructive size-7"
+                                                title="Удалить"
+                                                onClick={() => setFileToDelete(file)}
+                                            >
+                                                <Trash2 className="size-3.5" />
+                                            </Button>
                                         )}
                                     </div>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate text-sm font-medium">{file.name}</p>
-                                        <p className="text-xs text-muted-foreground">{formatBytes(file.size)}</p>
-                                    </div>
-                                    <span className="shrink-0 text-xs text-muted-foreground">
-                                        {format(parseISO(file.created_at), 'dd.MM.yyyy')}
-                                    </span>
-                                </Link>
+                                </div>
                             ))}
                         </div>
                     )}
                 </div>
             </div>
+
+            {/* Delete confirmation dialog */}
+            <Dialog open={!!fileToDelete} onOpenChange={(open) => !open && setFileToDelete(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Удалить файл</DialogTitle>
+                        <DialogDescription>
+                            Вы уверены, что хотите удалить{' '}
+                            <span className="text-foreground font-medium">{fileToDelete?.name}</span>?
+                            Это действие необратимо.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setFileToDelete(null)}
+                            disabled={isDeleting}
+                        >
+                            Отмена
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+                            {isDeleting ? 'Удаление…' : 'Удалить'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Move to folder dialog */}
+            <Dialog open={!!fileToMove} onOpenChange={(open) => !open && setFileToMove(null)}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Переместить в папку</DialogTitle>
+                        <DialogDescription>
+                            Выберите папку для{' '}
+                            <span className="text-foreground font-medium">{fileToMove?.name}</span>.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex flex-col gap-1">
+                        <button
+                            type="button"
+                            className={cn(
+                                'flex items-center gap-1.5 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent',
+                                selectedFolderId === null && 'bg-accent font-medium',
+                            )}
+                            onClick={() => setSelectedFolderId(null)}
+                        >
+                            <Folder className="size-3.5 shrink-0 text-muted-foreground" />
+                            Без папки
+                        </button>
+
+                        <div className="my-1 border-t" />
+
+                        <div className="max-h-64 overflow-y-auto">
+                            {foldersLoading ? (
+                                <div className="flex flex-col gap-1 px-2">
+                                    {[1, 2, 3].map((i) => (
+                                        <Skeleton key={i} className="h-7 w-full rounded" />
+                                    ))}
+                                </div>
+                            ) : folderTree.length === 0 ? (
+                                <p className="text-muted-foreground px-2 py-3 text-center text-sm">
+                                    Папок пока нет
+                                </p>
+                            ) : (
+                                folderTree.map((node) => (
+                                    <FolderNodeItem
+                                        key={node.id}
+                                        node={node}
+                                        selectedId={selectedFolderId}
+                                        onSelect={setSelectedFolderId}
+                                        openIds={ancestorIds}
+                                    />
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setFileToMove(null)}
+                            disabled={isMoving}
+                        >
+                            Отмена
+                        </Button>
+                        <Button onClick={handleMoveFolder} disabled={isMoving}>
+                            {isMoving ? 'Перемещение…' : 'Переместить'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }
