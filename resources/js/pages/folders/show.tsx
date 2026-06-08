@@ -539,20 +539,24 @@ export default function FoldersShow({ folder, subfolders, files, ancestors, acce
                                     <Eye className="size-3.5" />
                                 </Button>
                             </Link>
-                            <a href={filesRoute.download(r.id).url}>
-                                <Button variant="ghost" size="icon" className="size-7" title="Скачать">
-                                    <Download className="size-3.5" />
+                            {isAdmin && (
+                                <a href={filesRoute.download(r.id).url}>
+                                    <Button variant="ghost" size="icon" className="size-7" title="Скачать">
+                                        <Download className="size-3.5" />
+                                    </Button>
+                                </a>
+                            )}
+                            {isAdmin && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-7"
+                                    title="Переместить в папку"
+                                    onClick={() => setFileToMove(files.find((f) => f.id === r.id) ?? null)}
+                                >
+                                    <FolderInput className="size-3.5" />
                                 </Button>
-                            </a>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-7"
-                                title="Переместить в папку"
-                                onClick={() => setFileToMove(files.find((f) => f.id === r.id) ?? null)}
-                            >
-                                <FolderInput className="size-3.5" />
-                            </Button>
+                            )}
                             {isAdmin && (
                                 <Button
                                     variant="ghost"
@@ -951,20 +955,24 @@ export default function FoldersShow({ folder, subfolders, files, ancestors, acce
                                                                 <Eye className="size-3.5" />
                                                             </Button>
                                                         </Link>
-                                                        <a href={filesRoute.download(item.id).url}>
-                                                            <Button variant="ghost" size="icon" className="size-7" title="Скачать">
-                                                                <Download className="size-3.5" />
+                                                        {isAdmin && (
+                                                            <a href={filesRoute.download(item.id).url}>
+                                                                <Button variant="ghost" size="icon" className="size-7" title="Скачать">
+                                                                    <Download className="size-3.5" />
+                                                                </Button>
+                                                            </a>
+                                                        )}
+                                                        {isAdmin && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="size-7"
+                                                                title="Переместить в папку"
+                                                                onClick={() => setFileToMove(files.find((f) => f.id === item.id) ?? null)}
+                                                            >
+                                                                <FolderInput className="size-3.5" />
                                                             </Button>
-                                                        </a>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="size-7"
-                                                            title="Переместить в папку"
-                                                            onClick={() => setFileToMove(files.find((f) => f.id === item.id) ?? null)}
-                                                        >
-                                                            <FolderInput className="size-3.5" />
-                                                        </Button>
+                                                        )}
                                                         {isAdmin && (
                                                             <Button
                                                                 variant="ghost"
