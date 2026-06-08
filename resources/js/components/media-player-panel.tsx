@@ -43,8 +43,8 @@ export function MediaPlayerPanel() {
     return (
         <div
             ref={panelRef}
-            style={{ left: leftOffset }}
-            className="animate-in slide-in-from-bottom fixed right-0 bottom-0 z-50 flex flex-col gap-4 border-t-2 border-t-primary bg-background p-4 shadow-lg duration-300 transition-[left] ease-linear lg:p-6"
+            style={{ left: leftOffset, transition: 'left 200ms linear' }}
+            className="animate-in slide-in-from-bottom fixed right-0 bottom-0 z-50 flex flex-col gap-4 border-t-2 border-t-primary bg-background p-4 shadow-lg duration-300 lg:p-6"
         >
             <div className="flex items-center gap-2">
                 <span className="relative flex size-2.5 shrink-0">
