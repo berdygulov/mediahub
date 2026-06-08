@@ -1076,16 +1076,20 @@ export default function FoldersShow({ folder, subfolders, files, ancestors, acce
                                                         </td>
                                                     ))}
                                                 </tr>
-                                                {row.getIsExpanded() && (
-                                                    <tr className="border-b bg-muted/20">
-                                                        <td
-                                                            colSpan={row.getVisibleCells().length}
-                                                            className="px-6 pb-4 pt-2"
-                                                        >
-                                                            <p className="text-xs font-medium mb-0.5">Описание</p>
-                                                            <p className="text-muted-foreground text-xs whitespace-pre-wrap">
-                                                                {row.original.description}
-                                                            </p>
+                                                {row.original.description && (
+                                                    <tr>
+                                                        <td colSpan={row.getVisibleCells().length} className="p-0">
+                                                            <div className={cn(
+                                                                "overflow-hidden transition-all duration-200",
+                                                                row.getIsExpanded() ? "max-h-96" : "max-h-0",
+                                                            )}>
+                                                                <div className="bg-muted/20 border-b px-6 pb-4 pt-2">
+                                                                    <p className="text-xs font-medium mb-0.5">Описание</p>
+                                                                    <p className="text-muted-foreground text-xs whitespace-pre-wrap">
+                                                                        {row.original.description}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 )}
