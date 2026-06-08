@@ -253,7 +253,7 @@ export function AudioPlayer({ streamUrl, autoPlay = false }: Props) {
             isPlayingRef.current = false;
             startOffsetRef.current = 0;
         };
-    }, [streamUrl]);
+    }, [streamUrl, autoPlay]);
 
     function startSource(offset: number) {
         const audioCtx = audioCtxRef.current;
