@@ -8,12 +8,27 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['user_id', 'parent_id', 'name'])]
 class Folder extends Model
 {
     /** @use HasFactory<FolderFactory> */
     use HasFactory;
+
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::deleting(function (Folder $folder): void {
+            $folder->children()->each(fn (Folder $child) => $child->delete());
+
+            $folder->files()->each(function (File $file): void {
+                Storage::disk($file->disk)->delete($file->path);
+                $file->delete();
+            });
+        });
+    }
 
     public function user(): BelongsTo
     {

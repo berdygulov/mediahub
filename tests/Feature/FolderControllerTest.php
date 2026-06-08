@@ -6,6 +6,7 @@ use App\Models\File;
 use App\Models\Folder;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class FolderControllerTest extends TestCase
@@ -237,8 +238,121 @@ class FolderControllerTest extends TestCase
 
         $this->actingAs($admin)
             ->delete(route('folders.destroy', $folder->id))
-            ->assertRedirect();
+            ->assertRedirect(route('folders.index'));
 
         $this->assertDatabaseMissing('folders', ['id' => $folder->id]);
+    }
+
+    public function test_deleting_root_folder_redirects_to_folders_index(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $folder = Folder::factory()->for($admin)->create();
+
+        $this->actingAs($admin)
+            ->delete(route('folders.destroy', $folder->id))
+            ->assertRedirect(route('folders.index'));
+    }
+
+    public function test_deleting_subfolder_redirects_to_parent_folder(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $parent = Folder::factory()->for($admin)->create();
+        $child = Folder::factory()->withParent($parent)->create();
+
+        $this->actingAs($admin)
+            ->delete(route('folders.destroy', $child->id))
+            ->assertRedirect(route('folders.show', $parent->id));
+    }
+
+    public function test_deleting_folder_cascades_to_subfolders(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $parent = Folder::factory()->for($admin)->create();
+        $child = Folder::factory()->withParent($parent)->create();
+        $grandchild = Folder::factory()->withParent($child)->create();
+
+        $this->actingAs($admin)
+            ->delete(route('folders.destroy', $parent->id));
+
+        $this->assertDatabaseMissing('folders', ['id' => $child->id]);
+        $this->assertDatabaseMissing('folders', ['id' => $grandchild->id]);
+    }
+
+    public function test_deleting_folder_cascades_to_files_and_removes_from_storage(): void
+    {
+        Storage::fake('local');
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $folder = Folder::factory()->for($admin)->create();
+        Storage::disk('local')->put('media/test.mp4', 'fake content');
+        $file = File::factory()->for($admin)->inFolder($folder)->create([
+            'disk' => 'local',
+            'path' => 'media/test.mp4',
+        ]);
+
+        $this->actingAs($admin)
+            ->delete(route('folders.destroy', $folder->id));
+
+        $this->assertDatabaseMissing('files', ['id' => $file->id]);
+        Storage::disk('local')->assertMissing('media/test.mp4');
+    }
+
+    // --- update ---
+
+    public function test_non_admin_cannot_rename_folder(): void
+    {
+        $user = User::factory()->create();
+        $folder = Folder::factory()->for($user)->create(['name' => 'Original']);
+
+        $this->actingAs($user)
+            ->patch(route('folders.update', $folder->id), ['name' => 'Renamed'])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('folders', ['id' => $folder->id, 'name' => 'Original']);
+    }
+
+    public function test_admin_can_rename_folder(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $folder = Folder::factory()->for($admin)->create(['name' => 'Original']);
+
+        $this->actingAs($admin)
+            ->patch(route('folders.update', $folder->id), ['name' => 'Renamed'])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('folders', ['id' => $folder->id, 'name' => 'Renamed']);
+    }
+
+    public function test_rename_requires_name(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $folder = Folder::factory()->for($admin)->create();
+
+        $this->actingAs($admin)
+            ->patch(route('folders.update', $folder->id), ['name' => ''])
+            ->assertSessionHasErrors(['name']);
+    }
+
+    public function test_rename_name_cannot_exceed_255_characters(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $folder = Folder::factory()->for($admin)->create();
+
+        $this->actingAs($admin)
+            ->patch(route('folders.update', $folder->id), ['name' => str_repeat('a', 256)])
+            ->assertSessionHasErrors(['name']);
+    }
+
+    public function test_admin_cannot_rename_another_users_folder(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $other = User::factory()->create();
+        $folder = Folder::factory()->for($other)->create(['name' => 'Original']);
+
+        $this->actingAs($admin)
+            ->patch(route('folders.update', $folder->id), ['name' => 'Renamed'])
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('folders', ['id' => $folder->id, 'name' => 'Original']);
     }
 }

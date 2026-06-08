@@ -34,6 +34,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('folders', [FolderController::class, 'index'])->name('folders.index');
     Route::get('folders/{id}', [FolderController::class, 'show'])->name('folders.show');
     Route::post('folders', [FolderController::class, 'store'])->middleware('admin')->name('folders.store');
+    Route::patch('folders/{id}', [FolderController::class, 'update'])->middleware('admin')->name('folders.update');
     Route::delete('folders/{id}', [FolderController::class, 'destroy'])->middleware('admin')->name('folders.destroy');
 
     // Upload

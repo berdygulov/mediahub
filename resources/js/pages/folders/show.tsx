@@ -23,7 +23,9 @@ import {
     Folder,
     FolderInput,
     FolderPlus,
+    MoreHorizontal,
     Music,
+    Pencil,
     Play,
     Trash2,
     Upload,
@@ -42,6 +44,13 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
@@ -253,6 +262,19 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
     };
 
     const completedUploadCount = uploadQueue.filter((q) => q.status === 'done' || q.status === 'error').length;
+
+    const [showDeleteFolder, setShowDeleteFolder] = React.useState(false);
+    const [isDeletingFolder, setIsDeletingFolder] = React.useState(false);
+
+    const [showRenameFolder, setShowRenameFolder] = React.useState(false);
+    const {
+        data: renameData,
+        setData: setRenameData,
+        patch: renamePatch,
+        processing: renameProcessing,
+        errors: renameErrors,
+        clearErrors: clearRenameErrors,
+    } = useForm({ name: folder.name });
 
     const [fileToDelete, setFileToDelete] = React.useState<FileItem | null>(null);
     const [isDeleting, setIsDeleting] = React.useState(false);
@@ -527,6 +549,26 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
         );
     }
 
+    function handleDeleteFolder() {
+        setIsDeletingFolder(true);
+        router.delete(foldersRoute.destroy(folder.id).url, {
+            onFinish: () => setIsDeletingFolder(false),
+        });
+    }
+
+    function openRenameFolder() {
+        clearRenameErrors();
+        setRenameData('name', folder.name);
+        setShowRenameFolder(true);
+    }
+
+    function handleRenameFolder(e: React.FormEvent) {
+        e.preventDefault();
+        renamePatch(foldersRoute.update(folder.id).url, {
+            onSuccess: () => setShowRenameFolder(false),
+        });
+    }
+
     function handleCreate(e: React.FormEvent) {
         e.preventDefault();
         post(foldersRoute.store.url(), {
@@ -580,6 +622,27 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                                 <Upload className="size-3.5" />
                                 <span className="hidden sm:inline">Загрузить файлы</span>
                             </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button size="sm" variant="outline" className="h-8 w-8 px-0">
+                                        <MoreHorizontal className="size-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={openRenameFolder}>
+                                        <Pencil className="mr-2 size-4" />
+                                        Переименовать
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive"
+                                        onClick={() => setShowDeleteFolder(true)}
+                                    >
+                                        <Trash2 className="mr-2 size-4" />
+                                        Удалить
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                             {canCreateSubfolder && (
                                 <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
                                     <FolderPlus className="size-3.5" />
@@ -925,6 +988,95 @@ export default function FoldersShow({ folder, subfolders, files, ancestors }: Pr
                             {isMoving ? 'Перемещение…' : 'Переместить'}
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete folder dialog */}
+            <Dialog open={showDeleteFolder} onOpenChange={(open) => !isDeletingFolder && setShowDeleteFolder(open)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Удалить папку</DialogTitle>
+                        <DialogDescription asChild>
+                            <div className="space-y-2">
+                                <p>
+                                    Вы уверены, что хотите удалить папку{' '}
+                                    <span className="text-foreground font-medium">«{folder.name}»</span>?
+                                </p>
+                                {(folder.children_count > 0 || folder.files_count > 0) ? (
+                                    <p>
+                                        Папка содержит{' '}
+                                        {[
+                                            folder.children_count > 0
+                                                ? ruPlural(folder.children_count, 'подпапку', 'подпапки', 'подпапок')
+                                                : null,
+                                            folder.files_count > 0
+                                                ? ruPlural(folder.files_count, 'файл', 'файла', 'файлов')
+                                                : null,
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' и ')}
+                                        . Всё вложенное содержимое также будет безвозвратно удалено.
+                                    </p>
+                                ) : (
+                                    <p>Это действие необратимо.</p>
+                                )}
+                            </div>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowDeleteFolder(false)}
+                            disabled={isDeletingFolder}
+                        >
+                            Отмена
+                        </Button>
+                        <Button variant="destructive" onClick={handleDeleteFolder} disabled={isDeletingFolder}>
+                            {isDeletingFolder ? 'Удаление…' : 'Удалить'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Rename folder dialog */}
+            <Dialog
+                open={showRenameFolder}
+                onOpenChange={(open) => {
+                    if (!open) clearRenameErrors();
+                    setShowRenameFolder(open);
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Переименовать папку</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleRenameFolder} className="space-y-4">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="rename-folder-name">Новое название</Label>
+                            <Input
+                                id="rename-folder-name"
+                                value={renameData.name}
+                                onChange={(e) => setRenameData('name', e.target.value)}
+                                autoFocus
+                            />
+                            {renameErrors.name && (
+                                <p className="text-xs text-destructive">{renameErrors.name}</p>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setShowRenameFolder(false)}
+                                disabled={renameProcessing}
+                            >
+                                Отмена
+                            </Button>
+                            <Button type="submit" disabled={renameProcessing || !renameData.name.trim()}>
+                                {renameProcessing ? 'Сохранение…' : 'Сохранить'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
 

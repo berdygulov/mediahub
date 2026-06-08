@@ -88,13 +88,13 @@ class FolderModelTest extends TestCase
         $this->assertEmpty($root->ancestors());
     }
 
-    public function test_parent_becomes_null_when_parent_folder_is_deleted(): void
+    public function test_children_are_deleted_when_parent_folder_is_deleted(): void
     {
         $parent = Folder::factory()->create();
         $child = Folder::factory()->withParent($parent)->create();
 
         $parent->delete();
 
-        $this->assertNull($child->fresh()->parent_id);
+        $this->assertDatabaseMissing('folders', ['id' => $child->id]);
     }
 }

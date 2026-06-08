@@ -84,14 +84,35 @@ class FolderController extends Controller
         return back();
     }
 
+    public function update(int $id, Request $request): RedirectResponse
+    {
+        $folder = Folder::query()
+            ->where('user_id', $request->user()->id)
+            ->findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+        ]);
+
+        $folder->update(['name' => $validated['name']]);
+
+        return back();
+    }
+
     public function destroy(int $id, Request $request): RedirectResponse
     {
         $folder = Folder::query()
             ->where('user_id', $request->user()->id)
             ->findOrFail($id);
 
+        $parentId = $folder->parent_id;
+
         $folder->delete();
 
-        return back();
+        if ($parentId !== null) {
+            return redirect()->route('folders.show', $parentId);
+        }
+
+        return redirect()->route('folders.index');
     }
 }
