@@ -97,6 +97,9 @@ export function MediaPlayerPanel() {
                             </span>
                         )}
                     </div>
+                    {currentMedia.description && (
+                        <p className="text-muted-foreground text-sm">{currentMedia.description}</p>
+                    )}
 
                     <Separator />
                     <CommentsSection

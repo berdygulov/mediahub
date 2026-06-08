@@ -26,6 +26,7 @@ interface FolderResult {
 interface FileResult {
     id: number;
     name: string;
+    description: string | null;
     type: 'video' | 'audio';
     mime_type: string;
     size: number;
@@ -226,6 +227,9 @@ export default function SearchPage({ query, type, folders, files }: Props) {
                                                     </div>
                                                     <div className="min-w-0 flex-1">
                                                         <p className="truncate text-sm font-medium">{file.name}</p>
+                                                        {file.description && (
+                                                            <p className="truncate text-xs text-muted-foreground">{file.description}</p>
+                                                        )}
                                                         <div className="flex items-center gap-2">
                                                             <BreadcrumbPath path={file.folder_path} emptyMessage="Без папки" />
                                                             <span className="text-xs text-muted-foreground/50">·</span>

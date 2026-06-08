@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['user_id', 'folder_id', 'name', 'disk', 'path', 'mime_type', 'type', 'size'])]
+#[Fillable(['user_id', 'folder_id', 'name', 'description', 'disk', 'path', 'mime_type', 'type', 'size'])]
 class File extends Model
 {
     /** @use HasFactory<FileFactory> */

@@ -68,6 +68,7 @@ class SearchController extends Controller
                     ->map(fn (File $file): array => [
                         'id' => $file->id,
                         'name' => $file->name,
+                        'description' => $file->description,
                         'type' => $file->type,
                         'mime_type' => $file->mime_type,
                         'size' => $file->size,

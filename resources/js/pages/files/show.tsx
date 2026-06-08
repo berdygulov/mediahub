@@ -1,6 +1,6 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
-import { ArrowLeft, Download, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download, Pencil, Trash2 } from 'lucide-react';
 import * as React from 'react';
 
 import { AudioPlayer } from '@/components/players/audio-player';
@@ -15,7 +15,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 import { formatBytes } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import * as filesRoute from '@/routes/files';
@@ -33,6 +36,7 @@ interface FileOwner {
 interface FileRecord {
     id: number;
     name: string;
+    description: string | null;
     mime_type: string;
     type: 'video' | 'audio';
     size: number;
@@ -55,6 +59,27 @@ export default function FilesShow({ file, streamUrl, downloadUrl, canDownload }:
 
     const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
+
+    const [showEditDialog, setShowEditDialog] = React.useState(false);
+    const { data, setData, patch, processing, errors, clearErrors, reset } = useForm({
+        name: file.name,
+        description: file.description ?? '',
+    });
+
+    function openEditDialog() {
+        clearErrors();
+        reset();
+        setData({ name: file.name, description: file.description ?? '' });
+        setShowEditDialog(true);
+    }
+
+    function handleEdit(e: React.FormEvent) {
+        e.preventDefault();
+        patch(filesRoute.update(file.id).url, {
+            preserveScroll: true,
+            onSuccess: () => setShowEditDialog(false),
+        });
+    }
 
     function handleDelete() {
         setIsDeleting(true);
@@ -105,6 +130,9 @@ export default function FilesShow({ file, streamUrl, downloadUrl, canDownload }:
                                         </>
                                     )}
                                 </p>
+                                {file.description && (
+                                    <p className="text-muted-foreground text-sm">{file.description}</p>
+                                )}
                             </div>
 
                             <div className="flex shrink-0 items-center gap-2">
@@ -117,6 +145,18 @@ export default function FilesShow({ file, streamUrl, downloadUrl, canDownload }:
                                         <Download className="size-3.5" />
                                         Скачать
                                     </a>
+                                )}
+                                {isAdmin && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={openEditDialog}
+                                        className="gap-1.5"
+                                    >
+                                        <Pencil className="size-3.5" />
+                                        Редактировать
+                                    </Button>
                                 )}
                                 {isAdmin && (
                                     <Button
@@ -137,6 +177,62 @@ export default function FilesShow({ file, streamUrl, downloadUrl, canDownload }:
                     </div>
                 </div>
             </div>
+
+            <Dialog
+                open={showEditDialog}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        clearErrors();
+                        setShowEditDialog(false);
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Редактировать файл</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleEdit} className="space-y-4">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="file-name">Название</Label>
+                            <Input
+                                id="file-name"
+                                value={data.name}
+                                onChange={(e) => setData('name', e.target.value)}
+                                autoFocus
+                            />
+                            {errors.name && (
+                                <p className="text-xs text-destructive">{errors.name}</p>
+                            )}
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="file-description">Описание</Label>
+                            <Textarea
+                                id="file-description"
+                                value={data.description}
+                                onChange={(e) => setData('description', e.target.value)}
+                                placeholder="Необязательно"
+                                rows={4}
+                            />
+                            {errors.description && (
+                                <p className="text-xs text-destructive">{errors.description}</p>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setShowEditDialog(false)}
+                                disabled={processing}
+                            >
+                                Отмена
+                            </Button>
+                            <Button type="submit" disabled={processing || !data.name.trim()}>
+                                {processing ? 'Сохранение…' : 'Сохранить'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
             <Dialog
                 open={showDeleteDialog}

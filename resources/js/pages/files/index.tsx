@@ -63,6 +63,7 @@ interface FileOwner {
 interface FileRecord {
     id: number;
     name: string;
+    description: string | null;
     mime_type: string;
     type: 'video' | 'audio';
     size: number;
@@ -345,6 +346,18 @@ export default function FilesIndex({ files, filters, users }: Props) {
             ),
         },
         {
+            accessorKey: 'description',
+            header: 'Описание',
+            cell: ({ row }) =>
+                row.original.description ? (
+                    <span className="text-muted-foreground max-w-[220px] truncate text-sm block">
+                        {row.original.description}
+                    </span>
+                ) : (
+                    <span className="text-muted-foreground/40 text-sm">—</span>
+                ),
+        },
+        {
             accessorKey: 'mime_type',
             header: () => (
                 <button
@@ -433,6 +446,7 @@ export default function FilesIndex({ files, filters, users }: Props) {
                             play({
                                 id: row.original.id,
                                 name: row.original.name,
+                                description: row.original.description,
                                 type: row.original.type,
                                 mime_type: row.original.mime_type,
                                 size: row.original.size,
@@ -662,6 +676,7 @@ export default function FilesIndex({ files, filters, users }: Props) {
                                                         play({
                                                             id: file.id,
                                                             name: file.name,
+                                                            description: file.description,
                                                             type: file.type,
                                                             mime_type: file.mime_type,
                                                             size: file.size,
@@ -712,6 +727,9 @@ export default function FilesIndex({ files, filters, users }: Props) {
                                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-6 text-xs text-muted-foreground">
                                             <span>{file.mime_type}</span>
                                             <span>{formatBytes(file.size)}</span>
+                                            {file.description && (
+                                                <span className="max-w-[200px] truncate">{file.description}</span>
+                                            )}
                                             {file.folder && (
                                                 <Link
                                                     href={foldersRoute.show(file.folder.id).url}

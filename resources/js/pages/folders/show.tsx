@@ -92,6 +92,7 @@ interface FolderItem {
 interface FileItem {
     id: number;
     name: string;
+    description: string | null;
     type: 'video' | 'audio';
     mime_type: string;
     size: number;
@@ -127,6 +128,7 @@ interface TableRow {
     kind: 'folder' | 'file';
     id: number;
     name: string;
+    description: string | null;
     created_at: string;
     displayType: string;
     size: number | null;
@@ -367,6 +369,7 @@ export default function FoldersShow({ folder, subfolders, files, ancestors, acce
                     kind: 'folder',
                     id: f.id,
                     name: f.name,
+                    description: null,
                     created_at: f.created_at,
                     displayType: 'Папка',
                     size: null,
@@ -380,6 +383,7 @@ export default function FoldersShow({ folder, subfolders, files, ancestors, acce
                     kind: 'file',
                     id: f.id,
                     name: f.name,
+                    description: f.description,
                     created_at: f.created_at,
                     displayType: f.mime_type,
                     size: f.size,
@@ -417,6 +421,22 @@ export default function FoldersShow({ folder, subfolders, files, ancestors, acce
                             )}
                             <span className="max-w-[240px] truncate font-medium">{r.name}</span>
                         </div>
+                    );
+                },
+            },
+            {
+                accessorKey: 'description',
+                header: 'Описание',
+                enableSorting: false,
+                cell: ({ row }) => {
+                    const val = row.original.description;
+                    if (row.original.kind === 'folder' || !val) {
+                        return <span className="text-muted-foreground/40 text-sm">—</span>;
+                    }
+                    return (
+                        <span className="text-muted-foreground max-w-[220px] truncate text-sm block">
+                            {val}
+                        </span>
                     );
                 },
             },
@@ -523,6 +543,7 @@ export default function FoldersShow({ folder, subfolders, files, ancestors, acce
                                     play({
                                         id: r.id,
                                         name: r.name,
+                                        description: r.description,
                                         type: r.media_type!,
                                         mime_type: r.mime_type!,
                                         size: r.size!,
@@ -939,6 +960,7 @@ export default function FoldersShow({ folder, subfolders, files, ancestors, acce
                                                                 play({
                                                                     id: item.id,
                                                                     name: item.name,
+                                                                    description: item.description,
                                                                     type: item.media_type!,
                                                                     mime_type: item.mime_type!,
                                                                     size: item.size!,

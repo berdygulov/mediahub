@@ -6,6 +6,7 @@ import * as fileCommentsRoute from '@/actions/App/Http/Controllers/FileCommentCo
 export interface MediaItem {
     id: number;
     name: string;
+    description?: string | null;
     type: 'video' | 'audio';
     mime_type: string;
     size: number;

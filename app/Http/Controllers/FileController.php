@@ -147,6 +147,23 @@ class FileController extends Controller
         return response()->json($folders);
     }
 
+    public function update(int $id, Request $request): RedirectResponse
+    {
+        $file = File::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        $file->update([
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?: null,
+        ]);
+
+        return back();
+    }
+
     public function moveFolder(int $id, Request $request): RedirectResponse
     {
         $user = $request->user();
