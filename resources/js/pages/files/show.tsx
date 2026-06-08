@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { formatBytes } from '@/lib/utils';
+import { cn, formatBytes } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import * as filesRoute from '@/routes/files';
 
@@ -222,7 +222,7 @@ export default function FilesShow({ file, streamUrl, downloadUrl, canDownload }:
                                     ? <p className="text-xs text-destructive">{errors.description}</p>
                                     : <span />
                                 }
-                                <p className={`text-xs ${data.description.length >= 500 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                <p className={cn('text-xs', data.description.length >= 500 ? 'text-destructive' : 'text-muted-foreground')}>
                                     {data.description.length}/500
                                 </p>
                             </div>
