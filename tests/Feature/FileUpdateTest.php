@@ -88,4 +88,17 @@ class FileUpdateTest extends TestCase
             ])
             ->assertSessionHasErrors('name');
     }
+
+    public function test_description_cannot_exceed_500_characters(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $file = File::factory()->for($admin)->create();
+
+        $this->actingAs($admin)
+            ->patch(route('files.update', $file->id), [
+                'name' => $file->name,
+                'description' => str_repeat('a', 501),
+            ])
+            ->assertSessionHasErrors('description');
+    }
 }

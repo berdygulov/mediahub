@@ -214,11 +214,18 @@ export default function FilesShow({ file, streamUrl, downloadUrl, canDownload }:
                                 value={data.description}
                                 onChange={(e) => setData('description', e.target.value)}
                                 placeholder="Необязательно"
+                                maxLength={500}
                                 rows={4}
                             />
-                            {errors.description && (
-                                <p className="text-xs text-destructive">{errors.description}</p>
-                            )}
+                            <div className="flex items-center justify-between">
+                                {errors.description
+                                    ? <p className="text-xs text-destructive">{errors.description}</p>
+                                    : <span />
+                                }
+                                <p className={`text-xs ${data.description.length >= 500 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                    {data.description.length}/500
+                                </p>
+                            </div>
                         </div>
                         <DialogFooter>
                             <Button
