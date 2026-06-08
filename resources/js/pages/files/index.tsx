@@ -822,6 +822,7 @@ export default function FilesIndex({ files, filters, users }: Props) {
                                                         colSpan={row.getVisibleCells().length}
                                                         className="px-6 pb-4 pt-2"
                                                     >
+                                                        <p className="text-xs font-medium mb-0.5">Описание</p>
                                                         <p className="text-muted-foreground text-sm whitespace-pre-wrap">
                                                             {row.original.description}
                                                         </p>
