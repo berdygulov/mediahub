@@ -106,6 +106,7 @@ export function MediaPlayerPanel() {
                         fileId={currentMedia.id}
                         comments={comments}
                         loading={commentsLoading}
+                        scrollClassName="max-h-32"
                         onCommentPosted={refreshComments}
                         onCommentDeleted={refreshComments}
                     />

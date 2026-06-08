@@ -76,11 +76,12 @@ interface Props {
     comments: Comment[];
     loading?: boolean;
     className?: string;
+    scrollClassName?: string;
     onCommentPosted?: () => void;
     onCommentDeleted?: () => void;
 }
 
-export function CommentsSection({ fileId, comments, loading = false, className, onCommentPosted, onCommentDeleted }: Props) {
+export function CommentsSection({ fileId, comments, loading = false, className, scrollClassName, onCommentPosted, onCommentDeleted }: Props) {
     const { auth } = usePage().props;
     const isAdmin = auth.user.is_admin;
     const currentUserId = auth.user.id;
@@ -119,7 +120,7 @@ export function CommentsSection({ fileId, comments, loading = false, className, 
                 )}
             </div>
 
-            <div ref={scrollRef} className="max-h-64 overflow-y-auto">
+            <div ref={scrollRef} className={cn('max-h-64 overflow-y-auto', scrollClassName)}>
                 {loading ? (
                     <div className="space-y-4 py-1">
                         {[1, 2, 3].map((i) => (
