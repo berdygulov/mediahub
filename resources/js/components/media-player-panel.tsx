@@ -64,11 +64,12 @@ export function MediaPlayerPanel() {
                             streamUrl={currentMedia.streamUrl}
                             mimeType={currentMedia.mime_type}
                             className="w-full max-w-md"
+                            autoPlay
                         />
                     </div>
                 ) : (
                     <div className="col-span-2 xl:col-span-1">
-                        <AudioPlayer key={currentMedia.id} streamUrl={currentMedia.streamUrl} />
+                        <AudioPlayer key={currentMedia.id} streamUrl={currentMedia.streamUrl} autoPlay />
                     </div>
                 )}
 

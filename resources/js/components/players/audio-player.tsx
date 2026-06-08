@@ -14,9 +14,10 @@ function formatTime(seconds: number): string {
 
 interface Props {
     streamUrl: string;
+    autoPlay?: boolean;
 }
 
-export function AudioPlayer({ streamUrl }: Props) {
+export function AudioPlayer({ streamUrl, autoPlay = false }: Props) {
     const waveContainerRef = React.useRef<HTMLDivElement>(null);
     const waveformCanvasRef = React.useRef<HTMLCanvasElement>(null);
     const spectrumCanvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -231,6 +232,10 @@ export function AudioPlayer({ streamUrl }: Props) {
 
                 setIsLoading(false);
                 animFrame = requestAnimationFrame(tick);
+
+                if (autoPlay) {
+                    startSource(0);
+                }
             })
             .catch((err) => {
                 if (cancelled || err?.name === 'AbortError') return;

@@ -7,9 +7,10 @@ interface Props {
     streamUrl: string;
     mimeType: string;
     className?: string;
+    autoPlay?: boolean;
 }
 
-export function VideoPlayer({ streamUrl, mimeType, className }: Props) {
+export function VideoPlayer({ streamUrl, mimeType, className, autoPlay = false }: Props) {
     const videoRef = React.useRef<HTMLVideoElement>(null);
 
     React.useEffect(() => {
@@ -24,6 +25,7 @@ export function VideoPlayer({ streamUrl, mimeType, className }: Props) {
             }
 
             player = new Plyr(videoRef.current, {
+                autoplay: autoPlay,
                 controls: [
                     'play-large',
                     'play',
@@ -43,11 +45,11 @@ export function VideoPlayer({ streamUrl, mimeType, className }: Props) {
             cancelAnimationFrame(frame);
             player?.destroy();
         };
-    }, [streamUrl]);
+    }, [streamUrl, autoPlay]);
 
     return (
         <div className={cn('overflow-hidden rounded-lg', className)}>
-            <video ref={videoRef} playsInline>
+            <video ref={videoRef} playsInline autoPlay={autoPlay}>
                 <source src={streamUrl} type={mimeType} />
             </video>
         </div>
