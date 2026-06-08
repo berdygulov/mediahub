@@ -771,7 +771,17 @@ export default function FilesIndex({ files, filters, users }: Props) {
                             </div>
                             {/* Desktop: table */}
                             <div className="overflow-x-auto">
-                            <table className="hidden w-full text-sm md:table">
+                            <table className="hidden w-full table-fixed text-sm md:table">
+                                <colgroup>
+                                    <col />
+                                    <col />
+                                    <col className="w-[100px]" />
+                                    <col className="w-[80px]" />
+                                    <col />
+                                    {isAdmin && <col className="w-[110px]" />}
+                                    <col className="w-[130px]" />
+                                    <col className="w-[96px]" />
+                                </colgroup>
                                 <thead className="bg-muted/50 border-b">
                                     {table.getHeaderGroups().map((headerGroup) => (
                                         <tr key={headerGroup.id}>
