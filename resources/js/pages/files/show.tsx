@@ -131,7 +131,10 @@ export default function FilesShow({ file, streamUrl, downloadUrl, canDownload }:
                                     )}
                                 </p>
                                 {file.description && (
-                                    <p className="text-muted-foreground text-sm">{file.description}</p>
+                                    <div className="mt-1 flex flex-col gap-0.5">
+                                        <span className="text-xs font-medium">Описание</span>
+                                        <p className="text-muted-foreground text-sm">{file.description}</p>
+                                    </div>
                                 )}
                             </div>
 

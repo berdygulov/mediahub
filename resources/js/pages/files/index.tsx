@@ -1,6 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import type { ColumnDef } from '@tanstack/react-table';
+import { flexRender, getCoreRowModel, getExpandedRowModel, useReactTable } from '@tanstack/react-table';
+import type { ColumnDef, ExpandedState } from '@tanstack/react-table';
 import { format, parseISO } from 'date-fns';
 import {
     ArrowDown,
@@ -8,6 +8,7 @@ import {
     ArrowUpDown,
     Check,
     ChevronDown,
+    ChevronRight,
     Download,
     Eye,
     Film,
@@ -315,6 +316,8 @@ export default function FilesIndex({ files, filters, users }: Props) {
         );
     }
 
+    const [expanded, setExpanded] = React.useState<ExpandedState>({});
+
     const folderTree = React.useMemo(() => buildTree(foldersList), [foldersList]);
     const ancestorIds = React.useMemo(
         () => getAncestorIds(foldersList, fileToMove?.folder?.id ?? null),
@@ -348,14 +351,25 @@ export default function FilesIndex({ files, filters, users }: Props) {
         {
             accessorKey: 'description',
             header: 'Описание',
-            cell: ({ row }) =>
-                row.original.description ? (
-                    <span className="text-muted-foreground max-w-[220px] truncate text-sm block">
-                        {row.original.description}
-                    </span>
-                ) : (
-                    <span className="text-muted-foreground/40 text-sm">—</span>
-                ),
+            cell: ({ row }) => {
+                if (!row.original.description) {
+                    return <span className="text-muted-foreground/40 text-sm">—</span>;
+                }
+                return (
+                    <button
+                        className="flex max-w-[220px] items-center gap-1 text-left"
+                        onClick={(e) => { e.stopPropagation(); row.toggleExpanded(); }}
+                    >
+                        <span className="text-muted-foreground truncate text-sm">
+                            {row.original.description}
+                        </span>
+                        {row.getIsExpanded()
+                            ? <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+                            : <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+                        }
+                    </button>
+                );
+            },
         },
         {
             accessorKey: 'mime_type',
@@ -500,7 +514,11 @@ export default function FilesIndex({ files, filters, users }: Props) {
     const table = useReactTable({
         data: files.data,
         columns,
+        state: { expanded },
+        onExpandedChange: setExpanded,
+        getRowCanExpand: (row) => Boolean(row.original.description),
         getCoreRowModel: getCoreRowModel(),
+        getExpandedRowModel: getExpandedRowModel(),
         manualSorting: true,
     });
 
@@ -774,20 +792,33 @@ export default function FilesIndex({ files, filters, users }: Props) {
                                 </thead>
                                 <tbody>
                                     {table.getRowModel().rows.map((row) => (
-                                        <tr
-                                            key={row.id}
-                                            className="hover:bg-muted/30 border-b transition-colors last:border-0 cursor-pointer"
-                                            onClick={() => router.visit(filesRoute.show(row.original.id).url)}
-                                        >
-                                            {row.getVisibleCells().map((cell) => (
-                                                <td key={cell.id} className="px-4 py-3">
-                                                    {flexRender(
-                                                        cell.column.columnDef.cell,
-                                                        cell.getContext(),
-                                                    )}
-                                                </td>
-                                            ))}
-                                        </tr>
+                                        <React.Fragment key={row.id}>
+                                            <tr
+                                                className="hover:bg-muted/30 border-b transition-colors cursor-pointer"
+                                                onClick={() => router.visit(filesRoute.show(row.original.id).url)}
+                                            >
+                                                {row.getVisibleCells().map((cell) => (
+                                                    <td key={cell.id} className="px-4 py-3">
+                                                        {flexRender(
+                                                            cell.column.columnDef.cell,
+                                                            cell.getContext(),
+                                                        )}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                            {row.getIsExpanded() && (
+                                                <tr className="border-b bg-muted/20">
+                                                    <td
+                                                        colSpan={row.getVisibleCells().length}
+                                                        className="px-6 pb-4 pt-2"
+                                                    >
+                                                        <p className="text-muted-foreground text-sm whitespace-pre-wrap">
+                                                            {row.original.description}
+                                                        </p>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     ))}
                                 </tbody>
                             </table>

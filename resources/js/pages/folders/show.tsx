@@ -1,9 +1,11 @@
 import {
     ColumnDef,
     ColumnFiltersState,
+    ExpandedState,
     SortingState,
     flexRender,
     getCoreRowModel,
+    getExpandedRowModel,
     getFilteredRowModel,
     getSortedRowModel,
     useReactTable,
@@ -17,6 +19,8 @@ import {
     ArrowUp,
     ArrowUpDown,
     CheckCircle2,
+    ChevronDown,
+    ChevronRight,
     Clock,
     Download,
     Eye,
@@ -361,6 +365,7 @@ export default function FoldersShow({ folder, subfolders, files, ancestors, acce
 
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+    const [expanded, setExpanded] = React.useState<ExpandedState>({});
 
     const rows = React.useMemo<TableRow[]>(
         () => [
@@ -434,9 +439,16 @@ export default function FoldersShow({ folder, subfolders, files, ancestors, acce
                         return <span className="text-muted-foreground/40 text-sm">—</span>;
                     }
                     return (
-                        <span className="text-muted-foreground max-w-[220px] truncate text-sm block">
-                            {val}
-                        </span>
+                        <button
+                            className="flex max-w-[220px] items-center gap-1 text-left"
+                            onClick={(e) => { e.stopPropagation(); row.toggleExpanded(); }}
+                        >
+                            <span className="text-muted-foreground truncate text-sm">{val}</span>
+                            {row.getIsExpanded()
+                                ? <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+                                : <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+                            }
+                        </button>
                     );
                 },
             },
@@ -604,12 +616,16 @@ export default function FoldersShow({ folder, subfolders, files, ancestors, acce
             sorting,
             columnFilters,
             columnVisibility: { kind: false },
+            expanded,
         },
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
+        onExpandedChange: setExpanded,
+        getRowCanExpand: (row) => Boolean(row.original.description),
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
+        getExpandedRowModel: getExpandedRowModel(),
     });
 
     const folderTree = React.useMemo(() => buildTree(foldersList), [foldersList]);
@@ -1046,20 +1062,33 @@ export default function FoldersShow({ folder, subfolders, files, ancestors, acce
                                         </tr>
                                     ) : (
                                         table.getRowModel().rows.map((row) => (
-                                            <tr
-                                                key={row.id}
-                                                className="hover:bg-muted/30 border-b cursor-pointer transition-colors last:border-0"
-                                                onClick={() => router.visit(row.original.href)}
-                                            >
-                                                {row.getVisibleCells().map((cell) => (
-                                                    <td key={cell.id} className="px-4 py-3">
-                                                        {flexRender(
-                                                            cell.column.columnDef.cell,
-                                                            cell.getContext(),
-                                                        )}
-                                                    </td>
-                                                ))}
-                                            </tr>
+                                            <React.Fragment key={row.id}>
+                                                <tr
+                                                    className="hover:bg-muted/30 border-b cursor-pointer transition-colors"
+                                                    onClick={() => router.visit(row.original.href)}
+                                                >
+                                                    {row.getVisibleCells().map((cell) => (
+                                                        <td key={cell.id} className="px-4 py-3">
+                                                            {flexRender(
+                                                                cell.column.columnDef.cell,
+                                                                cell.getContext(),
+                                                            )}
+                                                        </td>
+                                                    ))}
+                                                </tr>
+                                                {row.getIsExpanded() && (
+                                                    <tr className="border-b bg-muted/20">
+                                                        <td
+                                                            colSpan={row.getVisibleCells().length}
+                                                            className="px-6 pb-4 pt-2"
+                                                        >
+                                                            <p className="text-muted-foreground text-sm whitespace-pre-wrap">
+                                                                {row.original.description}
+                                                            </p>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
                                         ))
                                     )}
                                 </tbody>
