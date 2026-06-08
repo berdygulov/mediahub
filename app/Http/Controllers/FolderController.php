@@ -122,6 +122,8 @@ class FolderController extends Controller
 
     public function update(int $id, Request $request): RedirectResponse
     {
+        abort_if(! $request->user()->is_admin, 403);
+
         $folder = Folder::findOrFail($id);
 
         $validated = $request->validate([
@@ -135,6 +137,8 @@ class FolderController extends Controller
 
     public function destroy(int $id, Request $request): RedirectResponse
     {
+        abort_if(! $request->user()->is_admin, 403);
+
         $folder = Folder::findOrFail($id);
 
         $parentId = $folder->parent_id;
