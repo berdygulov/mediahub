@@ -98,7 +98,9 @@ export function MediaPlayerPanel() {
                         )}
                     </div>
                     {currentMedia.description && (
-                        <p className="text-muted-foreground text-sm">{currentMedia.description}</p>
+                        <p className="text-muted-foreground max-h-16 overflow-y-auto text-sm">
+                            {currentMedia.description}
+                        </p>
                     )}
 
                     <Separator />
