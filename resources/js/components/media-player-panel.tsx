@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { format, parseISO } from 'date-fns';
 import { Film, Folder, Music, X } from 'lucide-react';
 
@@ -6,18 +7,45 @@ import { AudioPlayer } from '@/components/players/audio-player';
 import { VideoPlayer } from '@/components/players/video-player';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { useSidebar } from '@/components/ui/sidebar';
 import { useMediaPlayer } from '@/contexts/media-player-context';
 import { cn, formatBytes } from '@/lib/utils';
 
 export function MediaPlayerPanel() {
     const { currentMedia, isOpen, comments, commentsLoading, close, refreshComments } = useMediaPlayer();
+    const { state, isMobile } = useSidebar();
+    const panelRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const el = panelRef.current;
+        if (!el) return;
+
+        const observer = new ResizeObserver(([entry]) => {
+            document.documentElement.style.setProperty(
+                '--media-player-height',
+                `${Math.ceil(entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height) + 2}px`,
+            );
+        });
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [isOpen]);
 
     if (!isOpen || !currentMedia) {
         return null;
     }
 
+    const leftOffset = isMobile
+        ? '0px'
+        : state === 'expanded'
+          ? 'var(--sidebar-width)'
+          : 'var(--sidebar-width-icon)';
+
     return (
-        <div className="animate-in slide-in-from-bottom sticky bottom-0 z-10 flex flex-col gap-4 border-t-2 border-t-primary bg-background p-4 shadow-lg duration-300 lg:p-6">
+        <div
+            ref={panelRef}
+            style={{ left: leftOffset }}
+            className="animate-in slide-in-from-bottom fixed right-0 bottom-0 z-50 flex flex-col gap-4 border-t-2 border-t-primary bg-background p-4 shadow-lg duration-300 transition-[left] ease-linear lg:p-6"
+        >
             <div className="flex items-center gap-2">
                 <span className="relative flex size-2.5 shrink-0">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
