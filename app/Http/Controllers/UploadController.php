@@ -27,11 +27,13 @@ class UploadController extends Controller
                         ->max('500mb'),
                 ],
                 'folder_id' => ['nullable', 'integer', 'exists:folders,id'],
+                'description' => ['nullable', 'string', 'max:2000'],
             ],
             [
                 'file.required' => 'Файл обязателен.',
                 'file.Illuminate\Validation\Rules\File' => 'Файл должен быть одного из форматов: MP4, MKV, AVI, MP3, WAV, FLAC, OGG. Максимальный размер — 500 МБ.',
                 'folder_id.exists' => 'Указанная папка не существует.',
+                'description.max' => 'Описание не должно превышать 2000 символов.',
             ],
         );
 
@@ -46,6 +48,7 @@ class UploadController extends Controller
             'user_id' => $request->user()->id,
             'folder_id' => $request->input('folder_id'),
             'name' => $uploaded->getClientOriginalName(),
+            'description' => $request->input('description'),
             'disk' => 'local',
             'path' => $path,
             'mime_type' => $mimeType,

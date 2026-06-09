@@ -263,20 +263,24 @@ export default function Dashboard({ stats, recentFiles }: Props) {
                                                 <Eye className="size-3.5" />
                                             </Button>
                                         </Link>
-                                        <a href={filesRoute.download(file.id).url}>
-                                            <Button variant="ghost" size="icon" className="size-7" title="Скачать">
-                                                <Download className="size-3.5" />
-                                            </Button>
-                                        </a>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="size-7"
-                                            title="Переместить в папку"
-                                            onClick={() => setFileToMove(file)}
-                                        >
-                                            <FolderInput className="size-3.5" />
-                                        </Button>
+                                        {isAdmin && (
+                                            <>
+                                                <a href={filesRoute.download(file.id).url}>
+                                                    <Button variant="ghost" size="icon" className="size-7" title="Скачать">
+                                                        <Download className="size-3.5" />
+                                                    </Button>
+                                                </a>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-7"
+                                                    title="Переместить в папку"
+                                                    onClick={() => setFileToMove(file)}
+                                                >
+                                                    <FolderInput className="size-3.5" />
+                                                </Button>
+                                            </>
+                                        )}
                                         {isAdmin && (
                                             <Button
                                                 variant="ghost"

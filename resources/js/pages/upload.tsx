@@ -1,12 +1,12 @@
-import { Head } from '@inertiajs/react';
-import { router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { AlertCircle, CheckCircle2, Clock, CloudUpload, Film, Music } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { useDropzone  } from 'react-dropzone';
-import type {FileRejection} from 'react-dropzone';
+import { useDropzone } from 'react-dropzone';
+import type { FileRejection } from 'react-dropzone';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Textarea } from '@/components/ui/textarea';
 import { cn, formatBytes } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import * as uploadRoute from '@/routes/upload';
@@ -35,9 +35,9 @@ interface QueueItem {
     mediaType: 'video' | 'audio';
     status: FileStatus;
     progress: number;
+    description: string;
     error?: string;
 }
-
 
 export default function UploadPage() {
     const [queue, setQueueState] = useState<QueueItem[]>([]);
@@ -64,7 +64,7 @@ export default function UploadPage() {
         uploadingRef.current = next.id;
         setQueue(queueRef.current.map((q) => (q.id === next.id ? { ...q, status: 'uploading' as const } : q)));
 
-        router.post(uploadRoute.store.url(), { file: next.file }, {
+        router.post(uploadRoute.store.url(), { file: next.file, description: next.description || null }, {
             forceFormData: true,
             preserveState: true,
             preserveScroll: true,
@@ -93,6 +93,10 @@ export default function UploadPage() {
 
     startNextRef.current = startNext;
 
+    const updateDescription = (id: string, description: string) => {
+        setQueue(queueRef.current.map((q) => (q.id === id ? { ...q, description } : q)));
+    };
+
     const onDrop = (accepted: File[], rejected: FileRejection[]) => {
         rejected.forEach(({ file, errors }) => {
             const msg =
@@ -112,10 +116,10 @@ export default function UploadPage() {
             mediaType: file.type.startsWith('video/') ? 'video' : 'audio',
             status: 'pending' as const,
             progress: 0,
+            description: '',
         }));
 
         setQueue([...queueRef.current, ...newItems]);
-        startNext();
     };
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -126,6 +130,8 @@ export default function UploadPage() {
     });
 
     const completedCount = queue.filter((q) => q.status === 'done' || q.status === 'error').length;
+    const pendingCount = queue.filter((q) => q.status === 'pending').length;
+    const isUploading = queue.some((q) => q.status === 'uploading');
 
     return (
         <>
@@ -163,15 +169,22 @@ export default function UploadPage() {
                     <div className="flex flex-col gap-3">
                         <div className="flex items-center justify-between">
                             <h2 className="text-sm font-medium">Очередь ({queue.length})</h2>
-                            {completedCount > 0 && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setQueue(queueRef.current.filter((q) => q.status !== 'done' && q.status !== 'error'))}
-                                >
-                                    Очистить завершённые ({completedCount})
-                                </Button>
-                            )}
+                            <div className="flex items-center gap-2">
+                                {pendingCount > 0 && !isUploading && (
+                                    <Button size="sm" onClick={startNext}>
+                                        Загрузить ({pendingCount})
+                                    </Button>
+                                )}
+                                {completedCount > 0 && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setQueue(queueRef.current.filter((q) => q.status !== 'done' && q.status !== 'error'))}
+                                    >
+                                        Очистить завершённые ({completedCount})
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                         <div className="flex flex-col gap-2">
                             {queue.map((item) => (
@@ -200,6 +213,18 @@ export default function UploadPage() {
                                             )}
                                         </div>
                                     </div>
+                                    {item.status === 'pending' && (
+                                        <Textarea
+                                            placeholder="Описание (необязательно)"
+                                            value={item.description}
+                                            onChange={(e) => updateDescription(item.id, e.target.value)}
+                                            rows={2}
+                                            className="resize-none text-xs"
+                                        />
+                                    )}
+                                    {item.status === 'done' && item.description && (
+                                        <p className="text-xs text-muted-foreground">{item.description}</p>
+                                    )}
                                     {item.status === 'uploading' && <Progress value={item.progress} className="h-1.5" />}
                                     {item.status === 'error' && item.error && (
                                         <p className="text-xs text-destructive">{item.error}</p>

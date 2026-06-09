@@ -164,4 +164,37 @@ class UploadControllerTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors(['folder_id']);
     }
+
+    public function test_description_is_saved_with_file(): void
+    {
+        Storage::fake('local');
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $file = UploadedFile::fake()->create('video.mp4', 1024, 'video/mp4');
+
+        $this->actingAs($admin)->post(route('upload.store'), [
+            'file' => $file,
+            'description' => 'Тестовое описание',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('files', [
+            'user_id' => $admin->id,
+            'description' => 'Тестовое описание',
+        ]);
+    }
+
+    public function test_description_exceeding_2000_characters_is_rejected(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $file = UploadedFile::fake()->create('video.mp4', 1024, 'video/mp4');
+
+        $this->actingAs($admin)
+            ->withHeaders(['Accept' => 'application/json'])
+            ->post(route('upload.store'), [
+                'file' => $file,
+                'description' => str_repeat('а', 2001),
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['description']);
+    }
 }
