@@ -52,6 +52,7 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     Route::patch('users/{id}', [AdminUserController::class, 'update'])->name('users.update');
     Route::delete('users/{id}', [AdminUserController::class, 'destroy'])->name('users.destroy');
     Route::get('logs', [AdminLogController::class, 'index'])->name('logs.index');
+    Route::delete('logs', [AdminLogController::class, 'bulkDestroy'])->name('logs.bulk-destroy');
     Route::get('settings', [AdminSettingController::class, 'index'])->name('settings.index');
     Route::patch('settings', [AdminSettingController::class, 'update'])->name('settings.update');
     Route::post('folders/{folderId}/accesses', [AdminFolderAccessController::class, 'store'])->name('folder-accesses.store');
