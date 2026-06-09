@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\File;
 use App\Models\Folder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -28,16 +29,20 @@ class SearchController extends Controller
             $user = $request->user();
             $isAdmin = $user->is_admin;
 
-            $allFoldersQuery = Folder::select(['id', 'parent_id', 'name']);
-            if (! $isAdmin) {
-                $allFoldersQuery->where('user_id', $user->id);
-            }
-            $allFolders = $allFoldersQuery->get()->keyBy('id');
+            // Load all folders unfiltered — needed to build breadcrumb paths for
+            // shared folders whose ancestors may belong to other users.
+            $allFolders = Folder::select(['id', 'parent_id', 'name'])->get()->keyBy('id');
 
             if (! $type || $type === 'folder') {
                 $foldersQuery = Folder::with('user:id,name')->where('name', 'like', '%'.$query.'%');
                 if (! $isAdmin) {
-                    $foldersQuery->where('user_id', $user->id);
+                    $accessibleIds = Folder::accessibleIdsFor($user);
+                    $foldersQuery->where(function (Builder $q) use ($user, $accessibleIds): void {
+                        $q->where('user_id', $user->id);
+                        if (! empty($accessibleIds)) {
+                            $q->orWhereIn('id', $accessibleIds);
+                        }
+                    });
                 }
 
                 $folders = $foldersQuery
@@ -55,7 +60,7 @@ class SearchController extends Controller
             if (! $type || in_array($type, ['video', 'audio'], true)) {
                 $filesQuery = File::with('user:id,name')->where('name', 'like', '%'.$query.'%');
                 if (! $isAdmin) {
-                    $filesQuery->where('user_id', $user->id);
+                    $filesQuery->accessibleBy($user);
                 }
 
                 if ($type) {

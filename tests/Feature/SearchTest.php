@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\File;
 use App\Models\Folder;
+use App\Models\FolderAccess;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -241,6 +242,57 @@ class SearchTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->where('folders', [])
                 ->where('files', [])
+            );
+    }
+
+    public function test_non_admin_finds_folder_granted_access_to(): void
+    {
+        $user = User::factory()->create();
+        $owner = User::factory()->create();
+
+        $folder = Folder::factory()->for($owner)->create(['name' => 'shared_project_folder']);
+        FolderAccess::create(['folder_id' => $folder->id, 'user_id' => $user->id]);
+
+        $this->actingAs($user)
+            ->get(route('search.index', ['q' => 'shared_project']))
+            ->assertInertia(fn ($page) => $page
+                ->has('folders', 1)
+                ->where('folders.0.name', 'shared_project_folder')
+            );
+    }
+
+    public function test_non_admin_finds_files_inside_accessible_folder(): void
+    {
+        $user = User::factory()->create();
+        $owner = User::factory()->create();
+
+        $folder = Folder::factory()->for($owner)->create(['name' => 'Shared']);
+        FolderAccess::create(['folder_id' => $folder->id, 'user_id' => $user->id]);
+        File::factory()->for($owner)->inFolder($folder)->video()->create(['name' => 'shared_clip.mp4']);
+
+        $this->actingAs($user)
+            ->get(route('search.index', ['q' => 'shared_clip']))
+            ->assertInertia(fn ($page) => $page
+                ->has('files', 1)
+                ->where('files.0.name', 'shared_clip.mp4')
+            );
+    }
+
+    public function test_non_admin_finds_files_in_descendant_of_accessible_folder(): void
+    {
+        $user = User::factory()->create();
+        $owner = User::factory()->create();
+
+        $parent = Folder::factory()->for($owner)->create(['name' => 'Parent']);
+        $child = Folder::factory()->for($owner)->withParent($parent)->create(['name' => 'Child']);
+        FolderAccess::create(['folder_id' => $parent->id, 'user_id' => $user->id]);
+        File::factory()->for($owner)->inFolder($child)->video()->create(['name' => 'nested_clip.mp4']);
+
+        $this->actingAs($user)
+            ->get(route('search.index', ['q' => 'nested_clip']))
+            ->assertInertia(fn ($page) => $page
+                ->has('files', 1)
+                ->where('files.0.name', 'nested_clip.mp4')
             );
     }
 }
