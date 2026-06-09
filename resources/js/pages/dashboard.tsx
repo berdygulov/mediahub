@@ -135,7 +135,7 @@ export default function Dashboard({ stats, recentFiles }: Props) {
                         className="rounded-xl border border-sidebar-border/70 bg-card p-4 transition-colors hover:bg-muted/40 dark:border-sidebar-border"
                     >
                         <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">{isAdmin ? 'Все файлы' : 'Мои файлы'}</p>
+                            <p className="text-sm text-muted-foreground">{isAdmin ? 'Все файлы' : 'Доступные файлы'}</p>
                             <HardDrive className="size-4 text-muted-foreground" />
                         </div>
                         <p className="mt-2 text-2xl font-semibold">{stats.total}</p>
@@ -174,14 +174,18 @@ export default function Dashboard({ stats, recentFiles }: Props) {
 
                 <div className="flex flex-1 flex-col gap-4 rounded-xl border border-sidebar-border/70 p-6 dark:border-sidebar-border">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-sm font-medium">Последние загрузки</h2>
-                        <Link
-                            href={uploadCreate().url}
-                            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                        >
-                            <Upload className="size-3.5" />
-                            Загрузить
-                        </Link>
+                        <h2 className="text-sm font-medium">
+                            {isAdmin ? 'Последние загрузки' : 'Последние файлы'}
+                        </h2>
+                        {isAdmin && (
+                            <Link
+                                href={uploadCreate().url}
+                                className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                            >
+                                <Upload className="size-3.5" />
+                                Загрузить
+                            </Link>
+                        )}
                     </div>
 
                     {recentFiles.length === 0 ? (
@@ -189,14 +193,23 @@ export default function Dashboard({ stats, recentFiles }: Props) {
                             <div className="flex size-12 items-center justify-center rounded-full bg-muted">
                                 <HardDrive className="size-5 text-muted-foreground" />
                             </div>
-                            <p className="text-sm font-medium">Файлов пока нет</p>
-                            <p className="text-xs text-muted-foreground">Загрузите первый файл чтобы начать</p>
-                            <Link
-                                href={uploadCreate().url}
-                                className="mt-1 text-xs text-primary underline underline-offset-4 hover:text-primary/80"
-                            >
-                                Загрузить файл
-                            </Link>
+                            {isAdmin ? (
+                                <>
+                                    <p className="text-sm font-medium">Файлов пока нет</p>
+                                    <p className="text-xs text-muted-foreground">Загрузите первый файл чтобы начать</p>
+                                    <Link
+                                        href={uploadCreate().url}
+                                        className="mt-1 text-xs text-primary underline underline-offset-4 hover:text-primary/80"
+                                    >
+                                        Загрузить файл
+                                    </Link>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-sm font-medium">Нет доступных файлов</p>
+                                    <p className="text-xs text-muted-foreground">Вам пока не предоставлен доступ к файлам</p>
+                                </>
+                            )}
                         </div>
                     ) : (
                         <div className="divide-y">

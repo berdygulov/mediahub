@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\File;
+use App\Models\Folder;
+use App\Models\FolderAccess;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -83,6 +85,49 @@ class DashboardTest extends TestCase
                 ->where('stats.total', 5)
                 ->where('stats.video', 3)
                 ->where('stats.audio', 2)
+        );
+    }
+
+    public function test_non_admin_stats_include_files_from_shared_folders(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->create();
+
+        $folder = Folder::factory()->for($admin)->create();
+        FolderAccess::create(['folder_id' => $folder->id, 'user_id' => $user->id]);
+
+        File::factory()->count(2)->for($user)->create(['type' => 'video']);
+        File::factory()->count(3)->for($admin)->for($folder, 'folder')->create(['type' => 'audio']);
+
+        $this->actingAs($user);
+
+        $response = $this->get(route('dashboard'));
+
+        $response->assertInertia(
+            fn ($page) => $page
+                ->where('stats.total', 5)
+                ->where('stats.video', 2)
+                ->where('stats.audio', 3)
+        );
+    }
+
+    public function test_non_admin_recent_files_include_files_from_shared_folders(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->create();
+
+        $folder = Folder::factory()->for($admin)->create();
+        FolderAccess::create(['folder_id' => $folder->id, 'user_id' => $user->id]);
+
+        File::factory()->count(2)->for($user)->create();
+        File::factory()->count(2)->for($admin)->for($folder, 'folder')->create();
+
+        $this->actingAs($user);
+
+        $response = $this->get(route('dashboard'));
+
+        $response->assertInertia(
+            fn ($page) => $page->count('recentFiles', 4)
         );
     }
 

@@ -13,11 +13,7 @@ class DashboardController
     {
         $user = $request->user();
 
-        $baseQuery = File::query();
-
-        if (! $user->is_admin) {
-            $baseQuery->where('user_id', $user->id);
-        }
+        $baseQuery = File::query()->accessibleBy($user);
 
         $stats = [
             'total' => (clone $baseQuery)->count(),
