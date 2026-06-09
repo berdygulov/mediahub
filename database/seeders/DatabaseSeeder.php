@@ -2,25 +2,41 @@
 
 namespace Database\Seeders;
 
+use App\Models\Folder;
 use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
+    // Default credentials: admin@mediahub.com / password
     public function run(): void
     {
-        // User::factory(10)->create();
+        $admin = User::firstOrCreate(
+            ['email' => 'admin@mediahub.com'],
+            [
+                'name' => 'Super Admin',
+                'username' => 'superadmin',
+                'email_verified_at' => now(),
+                'password' => Hash::make('password'),
+                'is_admin' => true,
+            ]
+        );
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-            'is_admin' => 1,
+        $yearFolder = Folder::firstOrCreate([
+            'user_id' => $admin->id,
+            'parent_id' => null,
+            'name' => '2026',
         ]);
 
-        $this->call(FolderSeeder::class);
+        $months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь'];
+
+        foreach ($months as $month) {
+            Folder::firstOrCreate([
+                'user_id' => $admin->id,
+                'parent_id' => $yearFolder->id,
+                'name' => $month,
+            ]);
+        }
     }
 }
