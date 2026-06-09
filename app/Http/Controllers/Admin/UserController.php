@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Http\Controllers\Controller;
+use App\Models\File;
+use App\Models\Folder;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -48,6 +50,36 @@ class UserController extends Controller
                 'sort' => $sort,
                 'order' => $order,
             ],
+        ]);
+    }
+
+    public function show(int $id): Response
+    {
+        $user = User::findOrFail($id);
+
+        $accessibleFolders = Folder::whereHas('accesses', fn ($q) => $q->where('user_id', $user->id))
+            ->select(['id', 'name', 'parent_id'])
+            ->orderBy('name')
+            ->get();
+
+        $folderIds = $accessibleFolders->pluck('id');
+
+        $files = File::query()
+            ->whereIn('folder_id', $folderIds)
+            ->with('folder:id,name')
+            ->select(['id', 'name', 'type', 'mime_type', 'size', 'folder_id', 'created_at'])
+            ->latest()
+            ->paginate(20);
+
+        $allFolders = Folder::select(['id', 'name', 'parent_id'])
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('admin/users/show', [
+            'user' => $user->only('id', 'name', 'username', 'email', 'is_admin', 'created_at'),
+            'accessibleFolders' => $accessibleFolders,
+            'files' => $files,
+            'allFolders' => $allFolders,
         ]);
     }
 

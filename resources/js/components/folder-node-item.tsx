@@ -1,4 +1,4 @@
-import { ChevronRight, Folder } from 'lucide-react';
+import { Check, ChevronRight, Folder } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -57,13 +57,19 @@ export function FolderNodeItem({
     selectedId,
     onSelect,
     openIds,
+    disabledIds,
+    loadingId,
 }: {
     node: FolderNode;
     selectedId: number | null;
     onSelect: (id: number | null) => void;
     openIds: Set<number>;
+    disabledIds?: Set<number>;
+    loadingId?: number | null;
 }) {
     const hasChildren = node.children.length > 0;
+    const isDisabled = disabledIds?.has(node.id) ?? false;
+    const isLoading = loadingId === node.id;
 
     return (
         <Collapsible defaultOpen={openIds.has(node.id)}>
@@ -79,14 +85,18 @@ export function FolderNodeItem({
                 )}
                 <button
                     type="button"
+                    disabled={isDisabled || isLoading}
                     className={cn(
-                        'flex flex-1 items-center gap-1.5 rounded px-2 py-1 text-sm transition-colors hover:bg-accent',
+                        'flex flex-1 items-center gap-1.5 rounded px-2 py-1 text-sm transition-colors',
+                        !isDisabled && 'hover:bg-accent',
                         selectedId === node.id && 'bg-accent font-medium',
+                        (isDisabled || isLoading) && 'cursor-not-allowed opacity-50',
                     )}
                     onClick={() => onSelect(node.id)}
                 >
                     <Folder className="size-3.5 shrink-0 text-muted-foreground" />
-                    {node.name}
+                    <span className="flex-1 text-left">{node.name}</span>
+                    {isDisabled && <Check className="ml-auto size-3.5 shrink-0" />}
                 </button>
             </div>
             {hasChildren && (
@@ -99,6 +109,8 @@ export function FolderNodeItem({
                                 selectedId={selectedId}
                                 onSelect={onSelect}
                                 openIds={openIds}
+                                disabledIds={disabledIds}
+                                loadingId={loadingId}
                             />
                         ))}
                     </div>

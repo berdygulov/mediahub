@@ -2,7 +2,7 @@ import { Form, Head, Link, router } from '@inertiajs/react';
 import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type { ColumnDef } from '@tanstack/react-table';
 import { format, parseISO } from 'date-fns';
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, Shield, Users } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Pencil, Plus, Shield, Users } from 'lucide-react';
 import * as React from 'react';
 
 import InputError from '@/components/input-error';
@@ -185,6 +185,11 @@ export default function AdminUsers({ users, filters }: Props) {
             header: '',
             cell: ({ row }) => (
                 <div className="flex items-center justify-end gap-1">
+                    <Button variant="ghost" size="icon" className="size-7" title="Просмотр" asChild>
+                        <Link href={adminUsersRoute.show(row.original.id).url}>
+                            <Eye className="size-3.5" />
+                        </Link>
+                    </Button>
                     <Button
                         variant="ghost"
                         size="icon"
@@ -276,6 +281,17 @@ export default function AdminUsers({ users, filters }: Props) {
                                                 </span>
                                             </div>
                                             <div className="flex shrink-0 items-center gap-0.5">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-7"
+                                                    title="Просмотр"
+                                                    asChild
+                                                >
+                                                    <Link href={adminUsersRoute.show(user.id).url}>
+                                                        <Eye className="size-3.5" />
+                                                    </Link>
+                                                </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
@@ -391,7 +407,8 @@ export default function AdminUsers({ users, filters }: Props) {
                         </DialogDescription>
                     </DialogHeader>
                     <Form
-                        {...adminUsersRoute.store.form()}
+                        action={adminUsersRoute.store.url()}
+                        method="post"
                         resetOnSuccess={true}
                         onSuccess={() => setIsCreateOpen(false)}
                         className="flex flex-col gap-4 py-2"
@@ -503,7 +520,8 @@ export default function AdminUsers({ users, filters }: Props) {
                     {userToEdit && (
                         <Form
                             key={userToEdit.id}
-                            {...adminUsersRoute.update.form(userToEdit.id)}
+                            action={adminUsersRoute.update.url(userToEdit.id)}
+                            method="patch"
                             onSuccess={() => setUserToEdit(null)}
                             className="flex flex-col gap-4 py-2"
                         >
