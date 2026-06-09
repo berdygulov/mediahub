@@ -137,6 +137,18 @@ export default function Dashboard({ stats, recentFiles }: Props) {
         [foldersList],
     );
 
+    const diskUsedPct = stats.disk_total > 0
+        ? Math.min((stats.disk_total - stats.disk_free) / stats.disk_total * 100, 100)
+        : 0;
+    const diskBarColor = diskUsedPct >= 90 ? 'bg-destructive' : diskUsedPct >= 75 ? 'bg-chart-1' : 'bg-primary';
+
+    const [diskBarWidth, setDiskBarWidth] = React.useState(0);
+    React.useEffect(() => {
+        const id = window.setTimeout(() => setDiskBarWidth(diskUsedPct), 400);
+        return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     return (
         <>
             <Head title="Главная" />
@@ -191,20 +203,10 @@ export default function Dashboard({ stats, recentFiles }: Props) {
                             </CardHeader>
                             <CardContent className="px-4">
                                 <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                                    {(() => {
-                                        const usedPct = stats.disk_total > 0 ? (stats.disk_total - stats.disk_free) / stats.disk_total * 100 : 0;
-                                        const barColor = usedPct >= 90
-                                            ? 'bg-destructive'
-                                            : usedPct >= 75
-                                                ? 'bg-chart-1'
-                                                : 'bg-primary';
-                                        return (
-                                            <div
-                                                className={cn('h-full rounded-full transition-all', barColor)}
-                                                style={{ width: `${Math.min(usedPct, 100).toFixed(1)}%` }}
-                                            />
-                                        );
-                                    })()}
+                                    <div
+                                        className={cn('h-full rounded-full', diskBarColor)}
+                                        style={{ width: `${diskBarWidth.toFixed(1)}%`, transition: 'width 1500ms ease' }}
+                                    />
                                 </div>
                                 <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                                     <span>{formatBytes(stats.disk_total - stats.disk_free)} занято</span>
