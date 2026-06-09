@@ -43,6 +43,8 @@ class DashboardTest extends TestCase
                 ->has('stats.video')
                 ->has('stats.audio')
                 ->has('stats.storage')
+                ->has('stats.disk_total')
+                ->has('stats.disk_free')
                 ->has('recentFiles')
         );
     }

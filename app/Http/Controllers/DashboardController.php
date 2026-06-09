@@ -15,11 +15,15 @@ class DashboardController
 
         $baseQuery = File::query()->accessibleBy($user);
 
+        $storagePath = storage_path();
+
         $stats = [
             'total' => (clone $baseQuery)->count(),
             'video' => (clone $baseQuery)->where('type', 'video')->count(),
             'audio' => (clone $baseQuery)->where('type', 'audio')->count(),
             'storage' => (clone $baseQuery)->sum('size'),
+            'disk_total' => disk_total_space($storagePath) ?: 0,
+            'disk_free' => disk_free_space($storagePath) ?: 0,
         ];
 
         $recentFiles = (clone $baseQuery)
